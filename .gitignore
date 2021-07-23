@@ -10,8 +10,28 @@
 /[Ll]ogs/
 /[Mm]emoryCaptures/
 
+*.meta
+*.zip
+*.prefab
+*.exe
+*.dll
+*.asset
+*.rsp
+*.vsconfig
+/Packages
+/Assets/3rdParty
+/Assets/Map
+/Assets/Materials
+/Assets/Photon
+/Assets/Scenes
+/Assets/Resources
+/Assets/Audio
+MonoBleedingEdge/
+ProjectSettings/
+Trouble At Robot Town*
+
 # Asset meta data should only be ignored when the corresponding asset is also ignored
-!/[Aa]ssets/**/*.meta
+#!/[Aa]ssets/**/*.meta
 
 # Uncomment this line if you wish to ignore the asset store tools plugin
 # /[Aa]ssets/AssetStoreTools*
