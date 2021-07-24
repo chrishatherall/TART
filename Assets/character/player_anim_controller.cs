@@ -14,13 +14,13 @@ public class player_anim_controller : MonoBehaviourPun, IPunObservable
     bool isGrounded;         // true if on floor
 
     // Component refs
-    fps_controller fpsController;
+    fps_controller_phys fpsController;
     Animator animator;
 
 
     public void Start()
     {
-        fpsController = GetComponent<fps_controller>();
+        fpsController = GetComponent<fps_controller_phys>();
         animator = GetComponent<Animator>();
 
         if (!fpsController || !animator)
@@ -41,7 +41,7 @@ public class player_anim_controller : MonoBehaviourPun, IPunObservable
             frontBackMovement = fpsController.frontBackMovement;
             leftRightMovement = fpsController.leftRightMovement;
             isMoving = fpsController.isMoving;
-            isGrounded = fpsController.grounded;
+            isGrounded = fpsController.isGrounded;
 
 
             // TODO remove this immediately it is filthy

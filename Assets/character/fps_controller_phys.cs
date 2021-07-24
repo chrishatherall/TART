@@ -7,7 +7,7 @@ using Photon.Pun;
 // as the basic CharacterController can't handle acceleration changes, and won't be affected by
 // environmental affects.
 
-public class fps_controller : MonoBehaviourPun
+public class fps_controller_phys : MonoBehaviourPun
 {
 
     #region Camera Movement Variables
@@ -26,59 +26,57 @@ public class fps_controller : MonoBehaviourPun
 
     // Character move speed.
     public float speed = 6.0f;
-    // Strangth of gravity
-    public float gravity = -20f;
-    // Speed at which the character is falling.
-    private float fallingSpeed = 0f;
-    // Strength of a jump.
-    public float jumpStrength = 6f;
+    public float maxVelocityChange = 10f;
     // Is character currently crouching
     bool isCrouching = false;
+    // Jumping values
+    public bool enableJump = true;
+    public float jumpPower = 50f;
+
+    // Values for the animation controller. TODO should be read-only
+    public bool isGrounded;
+    public float frontBackMovement;
+    public float leftRightMovement;
+    public bool isMoving;
 
     // Create a layermask which ignores layer 7, so we dont constantly activate ourselves
     int layermask = ~(1 << 7);
     // Range at which we can activate buttons/doors
     public float activateRange = 2f;
+
     // Reference to our camera
     private Camera cam;
-    float camHeight;
+    // Save the original cam height when crouching so we can reset it later
+    float camHeight;    
+    // Save the original collider height when crouching so we can reset it later
+    float ccHeight;
     // Reference to our player script
     public Player player;
-
-    // Movement values
-    public bool grounded;
-    public float frontBackMovement; // For anim controller
-    public float leftRightMovement; // For anim controller
-    public bool isMoving;          // For anim controller
-
-    // Ref to the character controller.
-    CharacterController charCon;
-    float ccHeight;
     // Ref to the player inventory
     Inventory inventory;
-    // Ref to the top of our head, for determining if we can uncrouch
+    // Ref to the top of our head, used to determine if we can uncrouch by casting a ray upwards
     public GameObject topOfHead;
-
+    // Ref to the audio source for playing sounds locally
     private AudioSource audioSource; 
-
     // The text box shown below our cursor, for displaying information on pickups, activatables, etc
     public UnityEngine.UI.Text cursorTooltip;
+    // Ref to the rigidbody
+    Rigidbody rb;
+    // Ref to collider
+    CapsuleCollider cc;
 
     // Use this for initialization
     void Awake()
     {
-        // Find player script
+        // Find required components
         player = GetComponent<Player>();
-        // Find character controller
-        charCon = GetComponent<CharacterController>();
-        // Find the player inventory
         inventory = GetComponent<Inventory>();
-        // Find camera
         cam = GetComponentInChildren<Camera>();
-        // Find local audio source, used for pickup sounds
         audioSource = GetComponent<AudioSource>();
+        rb = GetComponent<Rigidbody>();
+        cc = GetComponent<CapsuleCollider>();
 
-        if (!player || !charCon || !inventory)
+        if (!player || !inventory || !cam || !audioSource || !rb)
         {
             Debug.LogError("[fps_controller] Missing components!");
         }
@@ -86,14 +84,40 @@ public class fps_controller : MonoBehaviourPun
         // turn off the cursor
         Cursor.lockState = CursorLockMode.Locked;
 
-        ccHeight = charCon.height;
         camHeight = cam.transform.localPosition.y;
+        ccHeight = cc.height;
+    }
+
+    bool PlayerCanMove()
+    {
+        return !player.isDead;
+    }
+
+    bool CheckGround()
+    {
+        float distance = .20f;
+        return Physics.Raycast(transform.position + new Vector3(0f, 0.01f, 0f), Vector3.down, out _, distance, layermask);
+    }
+
+    private void Jump()
+    {
+        // Adds force to the player rigidbody to jump
+        if (isGrounded)
+        {
+            rb.AddForce(0f, jumpPower, 0f, ForceMode.Impulse);
+            isGrounded = false; // Stops instant double-jump
+        }
     }
 
     // Update is called once per frame
     void Update()
     {
-        #region Camera
+        // Clean up tooltip text
+        cursorTooltip.text = "";
+
+        isGrounded = CheckGround();
+
+        #region CameraMovement
         // Control camera movement
         yaw = transform.localEulerAngles.y + Input.GetAxis("Mouse X") * mouseSensitivity;
         // Support dumb inverted camera
@@ -114,14 +138,13 @@ public class fps_controller : MonoBehaviourPun
         playerCamera.transform.localEulerAngles = new Vector3(pitch, 0, 0);
         #endregion
 
-
         #region Crouching
         if (!isCrouching && Input.GetKey(KeyCode.LeftControl))
         {
             isCrouching = true;
-            charCon.height = ccHeight / 2;
-            charCon.center = new Vector3(0f, ccHeight / 2, 0f);
-            topOfHead.transform.localPosition = new Vector3(0f, charCon.height, 0f);
+            cc.height = ccHeight / 2;
+            cc.center = new Vector3(0f, ccHeight / 2, 0f);
+            topOfHead.transform.localPosition = new Vector3(0f, cc.height, 0f);
             cam.transform.localPosition = new Vector3(0f, camHeight / 2, cam.transform.localPosition.z);
         }
         if (isCrouching && !Input.GetKey(KeyCode.LeftControl))
@@ -132,60 +155,17 @@ public class fps_controller : MonoBehaviourPun
             if (canUncrouch)
             {
                 isCrouching = false;
-                charCon.center = new Vector3(0f, ccHeight / 2, 0f);
-                charCon.height = ccHeight;
-                topOfHead.transform.localPosition = new Vector3(0f, charCon.height, 0f);
+                cc.center = new Vector3(0f, ccHeight / 2, 0f);
+                cc.height = ccHeight;
+                topOfHead.transform.localPosition = new Vector3(0f, cc.height, 0f);
                 cam.transform.localPosition = new Vector3(0f, camHeight, cam.transform.localPosition.z);
             }
         }
         #endregion
 
-        // Clean up tooltip text
-        cursorTooltip.text = "";
+        if (Input.GetKeyDown(KeyCode.Space)) Jump();
 
-        // just for debugging
-        grounded = charCon.isGrounded;
-
-        // TODO allow less control in the air
-
-        // Get input values 
-        frontBackMovement = Input.GetAxis("Vertical");
-        leftRightMovement = Input.GetAxis("Horizontal");
-        isMoving = frontBackMovement != 0 || leftRightMovement != 0; // We're moving if there is any input  TODO maybe add jump
-
-        // Get forward/strafe direction
-        Vector3 strafe = leftRightMovement * transform.right;
-        Vector3 forward = frontBackMovement * transform.forward;
-        Vector3 moveDirection = forward + strafe;
-
-        if (player.isDead) // Don't allow movement if dead, by overwriting input
-        {
-            moveDirection = new Vector3();
-        }
-
-        if (charCon.isGrounded)
-        {
-            // Slowest gravity if on the ground.
-            //fallingSpeed = gravity * Time.deltaTime;
-            // Go up if we're hitting jump
-            if (!player.isDead && Input.GetKeyDown("space"))
-            {
-                fallingSpeed = jumpStrength;
-            }
-        }
-        else
-        {
-            // Increase gravity if we're in the air
-            fallingSpeed += gravity * Time.deltaTime;
-        }
-
-        // Apply gravity
-        moveDirection.y += fallingSpeed;
-
-        // Instruct the controller to move us
-        charCon.Move(moveDirection * Time.deltaTime * speed);
-
-
+        #region UI
         if (Input.GetKeyDown("escape"))
         {
             // turn on the cursor
@@ -197,6 +177,9 @@ public class fps_controller : MonoBehaviourPun
             Cursor.lockState = CursorLockMode.Locked;
         }
 
+        #endregion
+
+        #region Interaction
 
         // Throw objects
         if (Input.GetKeyDown("g") && player.heldItem)
@@ -270,6 +253,7 @@ public class fps_controller : MonoBehaviourPun
             // TODO this is not a perfect thing, kinda buggy
             cursorTooltip.text = "";
         }
+        #endregion
 
 
         // Tell held item about some stuff
@@ -280,7 +264,35 @@ public class fps_controller : MonoBehaviourPun
 
     }
 
-     void TryPickupItem (GameObject item)
+    void FixedUpdate()
+    {
+        #region Movement
+
+        if (PlayerCanMove())
+        {
+            // Calculate how fast we should be moving
+            Vector3 targetVelocity = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
+
+            targetVelocity = transform.TransformDirection(targetVelocity) * speed;
+
+            // Air movement is only a fraction of speed
+            float adjustedMVC = maxVelocityChange;
+            if (!isGrounded) adjustedMVC *= 0.1f; 
+
+            // Apply a force that attempts to reach our target velocity
+            Vector3 velocity = rb.velocity;
+            Vector3 velocityChange = (targetVelocity - velocity);
+            velocityChange.x = Mathf.Clamp(velocityChange.x, -adjustedMVC, adjustedMVC);
+            velocityChange.z = Mathf.Clamp(velocityChange.z, -adjustedMVC, adjustedMVC);
+            velocityChange.y = 0;
+
+            rb.AddForce(velocityChange, ForceMode.VelocityChange);
+        }
+
+        #endregion
+    }
+
+    void TryPickupItem (GameObject item)
     {
         // If the player is already holding an item, drop it before picking up the new one
         if (player.heldItem)
