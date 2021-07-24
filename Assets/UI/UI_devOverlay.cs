@@ -37,8 +37,10 @@ public class UI_devOverlay : MonoBehaviour
         // Try to find a GM.
         GameManager GM = GameManager.gm;
         if (GM) {
+            // Room code
+            info += "Room code: " + PhotonNetwork.CurrentRoom.Name + "\n";
             // Game state
-            info += "Game state: " + GM.gameState + "\n";
+            info += "Game mode/state: " + PhotonNetwork.CurrentRoom.CustomProperties["gamemode"] + ":" + GM.gameState + "\n";
             // Player info
             GM.players.ForEach(delegate (Player p)
             {
