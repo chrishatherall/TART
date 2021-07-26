@@ -7,8 +7,6 @@ using UnityEngine.SceneManagement;
 using Photon.Realtime;
 using ExitGames.Client.Photon;
 
-// TODO unset self from static when being destroyed
-
 // Delegate signature for alert events
 public delegate void Alert(string message);
 
@@ -25,9 +23,10 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     public enum Events
     {
         AutoSomething,
-        RoundStart,
-        RoundOver,
-        PlayerDied
+        RoundStart,   // A round began
+        RoundOver,    // A round ended
+        PlayerDied,   // A player died during a round
+        RoundRestart  // Round-over time ended, and pre-round time has begun.
     }
 
     // Set static for easy references.
@@ -80,7 +79,10 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     public float curPostRoundTime;
 
     // Player spawn locations
-    public List<GameObject> spawnLocations;
+    public PlayerSpawn[] playerSpawnLocations;
+
+    // List of gameobjects with spawnitems
+    public List<GameObject> spawnTables;
 
     // Sync values
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
@@ -112,6 +114,9 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         // Set our initial round timers
         curPreRoundTime = preRoundTime;
         curPostRoundTime = postRoundTime;
+
+        // Find all player spawn points
+        playerSpawnLocations = FindObjectsOfType<PlayerSpawn>();
 
         Debug.Log("[GameManager] Started. State is " + gameState);
 
@@ -223,6 +228,17 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
                 p.photonView.RPC("RpcReset", RpcTarget.All);
             });
 
+            // Send out event if we're server
+            // TODO have a simple wrapper method for events sent to everyone
+            if (PhotonNetwork.IsMasterClient)
+            {
+                // Send out RoundStart event
+                // Content format is {  }
+                object[] content = new object[] { };
+                RaiseEventOptions raiseEventOptions = new RaiseEventOptions { Receivers = ReceiverGroup.All }; // All sends to us as well
+                PhotonNetwork.RaiseEvent((byte)Events.RoundRestart, content, raiseEventOptions, SendOptions.SendReliable);
+            }
+
             roundChange.clip = preRound;
             roundChange.Play();
         }
@@ -267,6 +283,19 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         }
     }
 
+    public Vector3 GetPlayerSpawnLocation()
+    {
+        // TODO this should choose a random player spawn, but take into account other player's distance from
+        // spawns. We don't want people spawning inside each other.
+        if (playerSpawnLocations.Length == 0)
+        {
+            Debug.LogError("[GM] Couldnt get player spawn, list is empty.");
+            return Vector3.zero;
+        }
+        int index = Random.Range(0, playerSpawnLocations.Length - 1);
+        return playerSpawnLocations[index].transform.position;
+    }
+
     public void Alert(string message)
     {
         OnGameAlert.Invoke(message);
@@ -309,7 +338,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         {
             Debug.LogFormat("We are Instantiating LocalPlayer from {0}", Application.loadedLevelName);
             // we're in a room. spawn a character for the local player. it gets synced by using PhotonNetwork.Instantiate
-            PhotonNetwork.Instantiate(this.playerPrefab.name, spawnLocations[0].transform.position, Quaternion.identity, 0); // TODO need to choose a spawnpoint
+            PhotonNetwork.Instantiate(this.playerPrefab.name, GetPlayerSpawnLocation(), Quaternion.identity, 0);
         }
     }
 
@@ -351,5 +380,26 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     {
         PhotonView pv = PhotonView.Find(photonViewID);
         PhotonNetwork.Destroy(pv);
+    }
+
+    public GameObject GetItemFromSpawnList(string listName)
+    {
+        // Find the right spawn list
+        GameObject spawnTable = spawnTables.Find(st => st.name == listName);
+        if (!spawnTable)
+        {
+            Debug.Log("[GM] Cannot find spawn table: '" + listName + "'.");
+            return null;
+        }
+        // Get all spawnable items under this spawn table.
+        SpawnListItem[] spawnItems = spawnTable.GetComponents<SpawnListItem>();
+        // Check that the list isn't empty.
+        if (spawnItems.Length == 0)
+        {
+            Debug.Log("[GM] Spawn table '" + listName + "' is empty.");
+            return null;
+        }
+        // Return a random item from the list. TODO this ignores weighting
+        return spawnItems[Random.Range(0, spawnItems.Length - 1)].worldPrefab;
     }
 }
