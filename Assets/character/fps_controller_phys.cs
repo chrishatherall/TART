@@ -286,7 +286,8 @@ public class fps_controller_phys : MonoBehaviourPun
             velocityChange.z = Mathf.Clamp(velocityChange.z, -adjustedMVC, adjustedMVC);
             velocityChange.y = 0;
 
-            rb.AddForce(velocityChange, ForceMode.VelocityChange);
+            //rb.AddForce(velocityChange, ForceMode.VelocityChange);
+            rb.MovePosition(rb.position + targetVelocity * Time.fixedDeltaTime); // TODO both cause jittering
         }
 
         #endregion

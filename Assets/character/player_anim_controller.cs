@@ -14,13 +14,13 @@ public class player_anim_controller : MonoBehaviourPun, IPunObservable
     bool isGrounded;         // true if on floor
 
     // Component refs
-    fps_controller_phys fpsController;
+    fps_controller fpsController;
     Animator animator;
 
 
     public void Start()
     {
-        fpsController = GetComponent<fps_controller_phys>();
+        fpsController = GetComponent<fps_controller>();
         animator = GetComponent<Animator>();
 
         if (!fpsController || !animator)

@@ -27,8 +27,9 @@ public class fps_controller : MonoBehaviourPun
     // Character move speed.
     public float speed = 6.0f;
     // Strangth of gravity
-    public float gravity = -20f;
+    public float gravity = -10f;
     // Speed at which the character is falling.
+    [SerializeField]
     private float fallingSpeed = 0f;
     // Strength of a jump.
     public float jumpStrength = 6f;
@@ -46,7 +47,7 @@ public class fps_controller : MonoBehaviourPun
     public Player player;
 
     // Movement values
-    public bool grounded;
+    public bool isGrounded;
     public float frontBackMovement; // For anim controller
     public float leftRightMovement; // For anim controller
     public bool isMoving;          // For anim controller
@@ -144,7 +145,7 @@ public class fps_controller : MonoBehaviourPun
         cursorTooltip.text = "";
 
         // just for debugging
-        grounded = charCon.isGrounded;
+        isGrounded = charCon.isGrounded;
 
         // TODO allow less control in the air
 
@@ -157,6 +158,10 @@ public class fps_controller : MonoBehaviourPun
         Vector3 strafe = leftRightMovement * transform.right;
         Vector3 forward = frontBackMovement * transform.forward;
         Vector3 moveDirection = forward + strafe;
+        moveDirection *= speed;
+
+        // Reduce air movement influence (this will cause us to stop dead if we run-jump)
+        //if (!charCon.isGrounded) moveDirection *= 0.1f;
 
         if (player.isDead) // Don't allow movement if dead, by overwriting input
         {
@@ -165,9 +170,9 @@ public class fps_controller : MonoBehaviourPun
 
         if (charCon.isGrounded)
         {
-            // Slowest gravity if on the ground.
-            //fallingSpeed = gravity * Time.deltaTime;
-            // Go up if we're hitting jump
+            fallingSpeed = -0.3f; // When on the ground we set a little downward speed otherwise the controller seems 
+            // to 'bounce' on the ground and half the time doesn't consider itself grounded.
+            // Go up if we're hitting jump.
             if (!player.isDead && Input.GetKeyDown("space"))
             {
                 fallingSpeed = jumpStrength;
@@ -179,11 +184,11 @@ public class fps_controller : MonoBehaviourPun
             fallingSpeed += gravity * Time.deltaTime;
         }
 
-        // Apply gravity
-        moveDirection.y += fallingSpeed;
+        // Apply falling speed to move direction
+        moveDirection.y = fallingSpeed;
 
         // Instruct the controller to move us
-        charCon.Move(moveDirection * Time.deltaTime * speed);
+        charCon.Move(moveDirection * Time.deltaTime);
 
 
         if (Input.GetKeyDown("escape"))

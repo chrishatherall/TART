@@ -46,7 +46,7 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 	/// we need to keep track of this to properly adjust the behavior when we receive call back by Photon.
 	/// Typically this is used for the OnConnectedToMaster() callback.
 	/// </summary>
-	bool isConnecting;
+	//bool isConnecting;
 
 	/// <summary>
 	/// This client's version number. Users are separated from each other by gameVersion (which allows you to make breaking changes).
@@ -87,7 +87,7 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 		//feedbackText.text = "";
 
 		// keep track of the will to join a room, because when we come back from the game we will get a callback that we are connected, so we need to know what to do then
-		isConnecting = true;
+		//isConnecting = true;
 
 		// Set player name
 		PhotonNetwork.NickName = playerNameTextbox.text.Length > 0 ? playerNameTextbox.text : "Player";
@@ -127,7 +127,7 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 
     public void Join()
     {
-		isConnecting = true;
+		//isConnecting = true;
 		// Set player name
 		PhotonNetwork.NickName = playerNameTextbox.text.Length > 0 ? playerNameTextbox.text : "Player";
 
@@ -201,7 +201,7 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 		// #Critical: we failed to connect or got disconnected. There is not much we can do. Typically, a UI system should be in place to let the user attemp to connect again.
 		//loaderAnime.StopLoaderAnimation();
 
-		isConnecting = false;
+		//isConnecting = false;
 		controlPanel.SetActive(true);
 	}
 
