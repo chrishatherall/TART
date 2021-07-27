@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
+using static GameManager;
 
 // TODO in an ideal world this controller would be based on a rigidbody to allow more detailed movement
 // as the basic CharacterController can't handle acceleration changes, and won't be affected by
@@ -22,6 +23,15 @@ public class fps_controller : MonoBehaviourPun
     // Internal Variables - these could be modified by guns for recoil
     private float yaw = 0.0f;
     private float pitch = 0.0f;
+    // Camera wiggle. Every time this is set, the rotation of the CameraWiggler object is randomised (to this scale).
+    // Eg, a C4 knock will set this very high once. Guns will set this low quite often.
+    // This is reduced over time by a set amount.
+    private float _camWiggle; // Effectively degrees of rotation for x/y.
+    [SerializeField]
+    float CamWiggleReductionPerSecond = 6f;
+    // Ref to the wiggle object, parent of our camera
+    [SerializeField]
+    GameObject CamWiggleObject;
     #endregion
 
     // Character move speed.
@@ -50,7 +60,7 @@ public class fps_controller : MonoBehaviourPun
     public bool isGrounded;
     public float frontBackMovement; // For anim controller
     public float leftRightMovement; // For anim controller
-    public bool isMoving;          // For anim controller
+    public bool isMoving;           // For anim controller
 
     // Ref to the character controller.
     CharacterController charCon;
@@ -64,6 +74,24 @@ public class fps_controller : MonoBehaviourPun
 
     // The text box shown below our cursor, for displaying information on pickups, activatables, etc
     public UnityEngine.UI.Text cursorTooltip;
+
+    public float CameraWiggle { 
+        get => _camWiggle; 
+        set 
+        {
+            // Ignore lower values.
+            if (_camWiggle > value) return;
+            // Do not allow value to be absurd.
+            _camWiggle = Mathf.Clamp(value, 0f, 10f);
+            // Set rotation of cam wiggle object
+            Vector3 curRot = CamWiggleObject.transform.localEulerAngles;
+            float y = curRot.y + _camWiggle * Random.Range(-0.25f, 0.25f); // Y wiggle (left/right) can go either way.
+            float x = curRot.x + _camWiggle * Random.Range(0f, -1f); // X wiggle (up/down) only goes up. 
+            Quaternion newRot = Quaternion.Euler(x, y, 0f);
+            CamWiggleObject.transform.localRotation = newRot;
+        }
+        
+    }
 
     // Use this for initialization
     void Awake()
@@ -81,7 +109,7 @@ public class fps_controller : MonoBehaviourPun
 
         if (!player || !charCon || !inventory)
         {
-            Debug.LogError("[fps_controller] Missing components!");
+            gm.LogError("[fps_controller] Missing components!");
         }
 
         // turn off the cursor
@@ -113,6 +141,18 @@ public class fps_controller : MonoBehaviourPun
         transform.localEulerAngles = new Vector3(0, yaw, 0);
         // Set x rotation of camera object
         playerCamera.transform.localEulerAngles = new Vector3(pitch, 0, 0);
+
+        // Reduce camera wiggle
+        // BIG NOTE: This is about camera wiggle, NOT gun recoil. Gun recoil uses this as a base, but has its own firing inaccuracy.
+        // The reduction amount should be fraction of the x rotation, or CamWiggleReductionPerSecond, whichever is higher.
+        float extraReduction = CamWiggleObject.transform.localEulerAngles.x;
+        if (extraReduction > 180) extraReduction = 360 - extraReduction; // Normalise reduction that goes under 0.
+        float reduction = CamWiggleReductionPerSecond + extraReduction * extraReduction; // Increase with a square, in case we get hit with something massive?
+        // Rotate back toward 0
+        Quaternion rotAmount = Quaternion.RotateTowards(CamWiggleObject.transform.localRotation, Quaternion.identity, reduction * Time.deltaTime);
+        // Reduce wiggle value
+        _camWiggle = Mathf.Clamp(_camWiggle - reduction * Time.deltaTime, 0f, 100f);
+        CamWiggleObject.transform.localRotation = rotAmount;
         #endregion
 
 
@@ -280,7 +320,7 @@ public class fps_controller : MonoBehaviourPun
         // Tell held item about some stuff
         if (player.heldItemScript)
         {
-            player.heldItemScript.SetValues(rayOrigin, cam, Input.GetButton("Fire1"), cam.transform.right);
+            player.heldItemScript.SetValues(rayOrigin, Input.GetButton("Fire1"));
         }
 
     }
@@ -299,10 +339,10 @@ public class fps_controller : MonoBehaviourPun
 
         if (!item || !PV || !item.GetComponent<Pickup>())
         {
-            Debug.LogError($"[fps_controller] player {player.id} tried to pick up missing item");
+            gm.LogError($"[fps_controller] player {player.id} tried to pick up missing item");
             return;
         }
-        Debug.Log($"[fps_controller] player {player.id} is picking up {item.GetComponent<Pickup>().nickname}");
+        gm.Log($"[fps_controller] player {player.id} is picking up {item.GetComponent<Pickup>().nickname}");
 
         // Delete old held item
         //if (player.heldItem) Destroy(player.heldItem);
@@ -325,7 +365,7 @@ public class fps_controller : MonoBehaviourPun
         // Do a check to see if we're picking up a non-held item like a keycard
         if (!pickup.prefabHeld)
         {
-            GameManager.gm.Alert("Picked up " + pickup.nickname);
+            gm.Alert("Picked up " + pickup.nickname);
             inventory.AddItem(pickup.nickname);
             Destroy(item);
             return;
@@ -359,7 +399,7 @@ public class fps_controller : MonoBehaviourPun
     [PunRPC]
     void RpcDropItem (string prefabName, bool destroyHeldItem)
     {
-        Debug.Log($"Player {player.nickname} dropping item {prefabName}");
+        gm.Log($"Player {player.nickname} dropping item {prefabName}");
 
         if (destroyHeldItem) Destroy(player.heldItem);
 
@@ -384,8 +424,8 @@ public class fps_controller : MonoBehaviourPun
         if (act.requiredKey != "" && !inventory.HasItem(act.requiredKey))
         {
             // ui alert
-            GameManager.gm.Alert("NEED " + act.requiredKey);
-            Debug.Log("NEED " + act.requiredKey);
+            gm.Alert("NEED " + act.requiredKey);
+            gm.Log("NEED " + act.requiredKey);
             return;
         }
         PhotonView PV = go.GetComponent<PhotonView>();

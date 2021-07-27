@@ -259,7 +259,7 @@ public class fps_controller_phys : MonoBehaviourPun
         // Tell held item about some stuff
         if (player.heldItemScript)
         {
-            player.heldItemScript.SetValues(rayOrigin, cam, Input.GetButton("Fire1"), cam.transform.right);
+            player.heldItemScript.SetValues(rayOrigin, Input.GetButton("Fire1"));
         }
 
     }

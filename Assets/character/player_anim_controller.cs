@@ -2,6 +2,7 @@ using Photon.Pun;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using static GameManager;
 
 // Pulls movement details from the fps_controller, syncs those values to the network, and passes them to the animator
 
@@ -25,7 +26,7 @@ public class player_anim_controller : MonoBehaviourPun, IPunObservable
 
         if (!fpsController || !animator)
         {
-            Debug.LogError("player_anim_controler could not find required components");
+            gm.LogError("player_anim_controler could not find required components");
             this.enabled = false;
         }
     }

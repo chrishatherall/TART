@@ -1,12 +1,10 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using static GameManager;
 
 public class UI_ShowPlayerDetails : MonoBehaviour
 {
-    // Ref to the GM.
-    public GameManager GM;
-
     // The player we're showing values for.
     public Player targetPlayer;
 
@@ -38,18 +36,13 @@ public class UI_ShowPlayerDetails : MonoBehaviour
     // Bullet background image, for scaling
     public UnityEngine.UI.Image gunMaxBulletsImage;
 
-
     // Update is called once per frame
     void Update()
     {
-        // Try to get a ref to the GM, which might not have started yet.
-        GM = GameManager.gm;
-        if (!GM) return;
-
         // Try to find a local player if we don't have one.
         if (!targetPlayer)
         {
-            targetPlayer = GM.players.Find(delegate (Player p)
+            targetPlayer = gm.players.Find(delegate (Player p)
             {
                 return p && p.photonView && p.photonView.IsMine;
             });

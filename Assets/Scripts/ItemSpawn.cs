@@ -15,7 +15,6 @@ public class ItemSpawn : MonoBehaviour, IOnEventCallback
     public void OnEvent(EventData photonEvent)
     {
         int eventCode = photonEvent.Code;
-        Debug.Log(eventCode);
 
         if (eventCode == (int)Events.RoundStart && PhotonNetwork.IsMasterClient)
         {
@@ -32,7 +31,7 @@ public class ItemSpawn : MonoBehaviour, IOnEventCallback
     {
         // Find a random item from our list
         GameObject prefab = gm.GetItemFromSpawnList(spawnList);
-        Debug.Log("Spawning item: " + prefab.name);
+        gm.Log("Spawning item: " + prefab.name);
         PhotonNetwork.Instantiate(prefab.name, this.transform.position, Quaternion.identity, 0);
     }
 }

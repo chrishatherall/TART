@@ -14,15 +14,12 @@ public class HeldItem : MonoBehaviour
     public string nickname;
 
     // Sets values from the fps controller that an item could use. TODO maybe use setters?
-    public void SetValues (Vector3 aimOrigin, Camera cam, bool triggerDown, Vector3 recoilAxis)
+    public void SetValues (Vector3 aimOrigin, bool triggerDown)
     {
         if (gun)
         {
-            gun.cam = cam;
             gun.aimOrigin = aimOrigin;
-            gun.aimVector = cam.transform.forward;
             gun.triggerDown = triggerDown;
-            gun.recoilAxis = recoilAxis;
         }
     }
 

@@ -9,6 +9,8 @@ using ExitGames.Client.Photon;
 
 // Delegate signature for alert events
 public delegate void Alert(string message);
+// Delegate for log messages with error flag
+public delegate void LogEntry(string message, bool error);
 
 public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCallback
 {
@@ -34,6 +36,9 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
 
     // Game-level alerts
     public event Alert OnGameAlert;
+
+    // Log events
+    public event LogEntry OnLog;
 
     // Ref to the ui we need to enable after loading
     public GameObject ui;
@@ -101,6 +106,15 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         }
     }
 
+    public void LogError(string msg)
+    {
+        OnLog.Invoke(msg, true);
+    }    
+    public void Log(string msg)
+    {
+        OnLog.Invoke(msg, false);
+    }
+
     void Awake()
     {
         // Add reference to ourself to the static GameManager
@@ -118,7 +132,10 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         // Find all player spawn points
         playerSpawnLocations = FindObjectsOfType<PlayerSpawn>();
 
-        Debug.Log("[GameManager] Started. State is " + gameState);
+        // This is an empty function so onlog can invoke SOMETHING. It errors otherwise.
+        OnLog += (m,b) => { };
+
+        Log("[GameManager] Started. State is " + gameState);
 
         ui.SetActive(true);
     }
@@ -292,7 +309,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
             Debug.LogError("[GM] Couldnt get player spawn, list is empty.");
             return Vector3.zero;
         }
-        int index = Random.Range(0, playerSpawnLocations.Length - 1);
+        int index = Random.Range(0, playerSpawnLocations.Length);
         return playerSpawnLocations[index].transform.position;
     }
 
@@ -400,6 +417,6 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
             return null;
         }
         // Return a random item from the list. TODO this ignores weighting
-        return spawnItems[Random.Range(0, spawnItems.Length - 1)].worldPrefab;
+        return spawnItems[Random.Range(0, spawnItems.Length)].worldPrefab;
     }
 }

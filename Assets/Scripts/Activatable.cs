@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
+using static GameManager;
 
 // An activatable is something that can be E'd, by a player and is highlighted when they look at it.
 // Examples: Buttons, levers, doors
@@ -37,7 +38,7 @@ public class Activatable : MonoBehaviourPun
 
         // TODO check things like enabled/disabled, X role only, cooldown, bool on/off like levers, etc
         // Tell other scripts on this object to activate
-        Debug.Log("Activated");
+        gm.Log("Activated " + nickname);
         // TODO how does this work with rpc? Maybe let controllables handle that?
         if (targetControllable != null)
         {

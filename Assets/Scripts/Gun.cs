@@ -2,10 +2,16 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
+using static GameManager;
 
 public class Gun : MonoBehaviourPun, IPunObservable
 {
-    // Things we need for a gun:
+    // Model recoil while shooting
+    // Save the default model and max-recoil position (which will be Vector3.zero)
+    // When shooting, we'll lerp between these two, based on firing time.
+    public Vector3 minRecoilPosition = Vector3.zero; // Could change these to transforms to also hold a rotation?
+    public Vector3 maxRecoilPosition;
+
     // Time between shots (everything is full auto, even a sniper)
     public float timeUntilNextShot = 0f;
     public float timeBetweenShots = 0.5f;
@@ -24,9 +30,7 @@ public class Gun : MonoBehaviourPun, IPunObservable
     // is trigger being held down, set by HeldItem
     public bool triggerDown = false;
     // Angle around which recoil is applied to character/camera. This is right for most guns, which recoil upwards.
-    Vector3 recoilVector = Vector3.right;
-    // Aim vector, set by HeldItem
-    public Vector3 aimVector;
+    //Vector3 recoilVector = Vector3.right;
     // Origin point set by HeldItem
     public Vector3 aimOrigin;
     // Axis around which recoil turns the gun
@@ -53,8 +57,11 @@ public class Gun : MonoBehaviourPun, IPunObservable
     public AudioSource shotSound;
     // Reload sound
     public AudioSource reloadSound;
-    // Ref to camera of the person holding this gun, so we can add recoil to the camera
+    // Ref to fpscontoller of the person holding this gun, so we can add recoil to the camera via it
+    public fps_controller fpsController;
+    // Ref to the camera, which we use for aiming
     public Camera cam;
+
     // Ref to the model anchor transform, which is rotated in some situations (eg, mac10 held sideways)
     [SerializeField]
     GameObject modelAnchor;
@@ -67,15 +74,17 @@ public class Gun : MonoBehaviourPun, IPunObservable
         Player owner = GameManager.gm.GetPlayerByID(playerId);
         if (!owner)
         {
-            Debug.LogError("Gun setup could not find player " + playerId);
+            gm.LogError("Gun setup could not find player " + playerId);
             return;
         }
-
 
         this.transform.parent = owner.itemAnchor.transform;
         this.transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
         owner.heldItem = this.gameObject;
         owner.heldItemScript = owner.heldItem.GetComponent<HeldItem>();
+
+        fpsController = GetComponentInParent<fps_controller>();
+        cam = fpsController.playerCamera;
     }
 
     // Called by the shooter on all other clients
@@ -144,9 +153,9 @@ public class Gun : MonoBehaviourPun, IPunObservable
         bulletsInMag--;
 
         // Check we have an aim vector
-        if (aimVector == null || aimOrigin == null || recoilAxis == null)
+        if (aimOrigin == null)
         {
-            Debug.LogError("[Gun] " + name + " has no aim vector/origin/recoilAxis");
+            gm.LogError("[Gun] " + name + " has no aim origin");
             return;
         }
 
@@ -156,32 +165,24 @@ public class Gun : MonoBehaviourPun, IPunObservable
         // Tell server we're shooting
         // Add recoil to our aim vector
         //Vector3 recoilVector = Quaternion.AngleAxis(-currentRecoil, recoilAxis) * aimVector;
-        CmdShoot(aimOrigin, aimVector);
+        CmdShoot(aimOrigin, cam.transform.forward);
 
         // Add recoil
         //currentRecoil += recoilPerShot;
         //if (currentRecoil > maxRecoil) currentRecoil = maxRecoil;
 
         // Add recoil to camera/character
+        if (fpsController)
+        {
+            fpsController.CameraWiggle = recoilPerShot;
+        } else
+        {
+            gm.LogError("[Gun] Cannot find fps_controller to add camera wiggle");
+        }
         //cam.transform.Rotate(transform.right, recoilPerShot);
-        cam.transform.Rotate(Vector3.right, -recoilPerShot * recoilVector.normalized.x); // HEY this won't work because cam is fixed to y axis. We need to rotate character instead
+        //cam.transform.Rotate(Vector3.right, -recoilPerShot * recoilVector.normalized.x); // HEY this won't work because cam is fixed to y axis. We need to rotate character instead
         // So how do we do that? Any y rotation goes to character, and x rotation goes to camera. Split out euler angles of gun?
-        cam.transform.parent.Rotate(Vector3.up, -recoilPerShot * recoilVector.normalized.y);
-
-
-        // Debug line
-        //RaycastHit hit;
-        //if (Physics.Raycast(aimOrigin, aimVector, out hit, range))
-        //{
-        //    LineRenderer laserLine = GetComponent<LineRenderer>();
-        //    if (laserLine)
-        //    {
-        //        // Set the end position for our laser line 
-        //        laserLine.SetPosition(1, hit.point);
-        //        // Set the start position for our visual effect for our laser to the position of our gun end
-        //        laserLine.SetPosition(0, aimOrigin);
-        //    }
-        //}
+        //cam.transform.parent.Rotate(Vector3.up, -recoilPerShot * recoilVector.normalized.y);
     }
 
     // Called when the player hits the reload key
@@ -193,7 +194,6 @@ public class Gun : MonoBehaviourPun, IPunObservable
         reloadSound.Play();
         // Set downward angle, which cheaply indicates we're reloading
         modelAnchor.transform.localRotation = Quaternion.Euler(45f, 0f, 0f);
-
     }
 
     // Called when a reload finishes
@@ -210,22 +210,26 @@ public class Gun : MonoBehaviourPun, IPunObservable
     // Update is called once per frame
     void Update()
     {
+        // Move our gun when fired. Doesn't affect aim, just visual.
+        float lerpAmount = timeUntilNextShot / timeBetweenShots;
+        this.transform.localPosition = Vector3.Lerp(minRecoilPosition, maxRecoilPosition, lerpAmount);
+
         // Hold gun sideways if it supports it. Sets recoil vector as well;
         // Can't do this when reloading
-        if (modelAnchor && supportsSideways && !isReloading)
-        {
-            float rot;
-            if (Input.GetMouseButton(1))
-            {
-                rot = 90f;
-                recoilVector = Vector3.up;
-            } else
-            {
-                rot = 0f;
-                recoilVector = Vector3.right;
-            }
-            modelAnchor.transform.localRotation = Quaternion.Euler(0f, 0f, rot);
-        }
+        //if (modelAnchor && supportsSideways && !isReloading)
+        //{
+        //    float rot;
+        //    if (Input.GetMouseButton(1))
+        //    {
+        //        rot = 90f;
+        //        recoilVector = Vector3.up;
+        //    } else
+        //    {
+        //        rot = 0f;
+        //        recoilVector = Vector3.right;
+        //    }
+        //    modelAnchor.transform.localRotation = Quaternion.Euler(0f, 0f, rot);
+        //}
 
         if (isReloading)
         {

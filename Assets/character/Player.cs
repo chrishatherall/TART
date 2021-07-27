@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
 using tart;
+using static GameManager;
 
 public class Player : MonoBehaviourPunCallbacks, IPunObservable
 {
@@ -27,10 +28,6 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     [SerializeField]
     public string nickname;
     #endregion
-
-
-    // Ref to the GameManager.
-    private GameManager GM; 
 
     // Setup flag
     public bool isSetup = false;
@@ -75,22 +72,22 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     {
         if (isSetup)
         {
-            Debug.LogWarning("[Player] Already set up!");
+            gm.LogError("[Player] Already set up!");
             return;
         }
-        GM = GameManager.gm;
+
         // GM might not be ready yet.
-        if (!GM)
+        if (!gm)
         {
-            Debug.LogError("[Player] GM not ready!");
+            gm.LogError("[Player] GM not ready!");
         }
         // Announce self to GM.
-        Debug.Log("[Player] Started. Announcing to GameManager.");
-        GM.AddPlayer(this);
+        gm.Log("[Player] Started. Announcing to GameManager.");
+        gm.AddPlayer(this);
         // Grab our network ID
         this.id = photonView.ViewID;
         // Set ourselves as default role
-        this._role = GM.GetRoleFromID(0);
+        this._role = gm.GetRoleFromID(0);
         // Mark setup done.
         isSetup = true;
 
@@ -107,11 +104,11 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     {
         if (!isSetup)
         {
-            Debug.LogError("[Player] Cannot set role, not set up!");
+            gm.LogError("[Player] Cannot set role, not set up!");
             return;
         }
-        _role = GM.GetRoleFromID(id);
-        if (photonView.IsMine) GM.Alert("Role is now " + _role.Name + "!");
+        _role = gm.GetRoleFromID(id);
+        if (photonView.IsMine) gm.Alert("Role is now " + _role.Name + "!");
     }
 
     // Role is set via rpc instead of syncvar because we can't easily sync a class
@@ -134,7 +131,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         maxOil = 100;
         damage = 0;
         isDead = false;
-        this._role = GM.GetRoleFromID(0);
+        this._role = gm.GetRoleFromID(0);
     }
 
     public void TakeDamage(int dmg)
@@ -147,7 +144,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         {
             oil = 0;
             isDead = true;
-            GM.Alert("DEAD");
+            gm.Alert("DEAD");
         }
     }
 
@@ -178,7 +175,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     public void Die()
     {
         isDead = true;
-        GM.Alert("DEAD");
+        gm.Alert("DEAD");
     }
 
 }

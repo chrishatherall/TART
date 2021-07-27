@@ -5,6 +5,6 @@ using UnityEngine;
 public class SpawnListItem : MonoBehaviour
 {
     public GameObject worldPrefab;
-    [SerializeField]
-    int weight = 10;
+    //[SerializeField]
+    //int weight = 10;
 }
