@@ -238,18 +238,14 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         {
             Log("[GM] Round restart!");
 
-            players.ForEach(p =>
-            {
-                if (!PhotonNetwork.IsMasterClient) return;
-                p.photonView.RPC("RpcReset", RpcTarget.All);
-            });
-
             roundChange.clip = preRound;
             roundChange.Play();
 
             RaiseEvent(Events.Preround);
 
             SpawnSceneItems();
+
+            ResetPlayers();
 
             // Tell item spawners to spawn their items
         }
@@ -441,6 +437,17 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     {
         PhotonView pv = PhotonView.Find(photonViewID);
         PhotonNetwork.Destroy(pv);
+    }
+
+    public void ResetPlayers()
+    {
+        // TODO maybe respawn players entirely
+
+        if (!PhotonNetwork.IsMasterClient) return;
+        foreach (Player p in players)
+        {
+            p.photonView.RPC("Reset", RpcTarget.All);
+        }
     }
 
     public void ClearScene()

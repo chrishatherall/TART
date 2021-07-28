@@ -129,7 +129,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     //}
 
     [PunRPC]
-    public void RpcReset()
+    public void Reset()
     {
         oil = 100;
         maxOil = 100;
