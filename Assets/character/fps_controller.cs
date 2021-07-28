@@ -236,12 +236,6 @@ public class fps_controller : MonoBehaviourPun
             // turn on the cursor
             Cursor.lockState = CursorLockMode.None;
         }
-        // Dirty mouse catch
-        if (Input.GetMouseButtonDown(0))
-        {
-            Cursor.lockState = CursorLockMode.Locked;
-        }
-
 
         // Throw objects
         if (Input.GetKeyDown("g") && player.heldItem)

@@ -25,8 +25,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     public bool isDead = false;
     // Local player is loaded and ready to play a round
     public bool isReady = false;
-    [SerializeField]
+
     public string nickname;
+    public int actorNumber; // The actor number provided by photon to networked players
     #endregion
 
     // Setup flag
@@ -48,8 +49,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             stream.SendNext(maxOil);
             stream.SendNext(damage);
             stream.SendNext(isDead);
-            stream.SendNext(nickname);
             stream.SendNext(isReady);
+            stream.SendNext(nickname);
+            stream.SendNext(actorNumber);
         }
         else
         {
@@ -58,8 +60,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             this.maxOil = (int)stream.ReceiveNext();
             this.damage = (int)stream.ReceiveNext();
             this.isDead = (bool)stream.ReceiveNext();
-            this.nickname = (string)stream.ReceiveNext();
             this.isReady = (bool)stream.ReceiveNext();
+            this.nickname = (string)stream.ReceiveNext();
+            this.actorNumber = (int)stream.ReceiveNext();
         }
     }
 
@@ -96,6 +99,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         {
             isReady = true;
             nickname = PhotonNetwork.LocalPlayer.NickName;
+            actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
         }
     }
 

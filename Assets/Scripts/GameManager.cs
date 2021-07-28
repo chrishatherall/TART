@@ -328,6 +328,11 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         return players.Find(p => p.id == id);
     }
 
+    public Player GetPlayerByActorNumber(int id)
+    {
+        return players.Find(p => p.actorNumber == id);
+    }
+
     public void AddPlayer(Player player)
     {
         if (GetPlayerByID(player.id))
