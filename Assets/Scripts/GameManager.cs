@@ -6,6 +6,7 @@ using tart;
 using UnityEngine.SceneManagement;
 using Photon.Realtime;
 using ExitGames.Client.Photon;
+using System.Linq;
 
 // Delegate signature for alert events
 public delegate void Alert(string message);
@@ -25,10 +26,10 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     public enum Events
     {
         AutoSomething,
+        Preround,     // Preround started
         RoundStart,   // A round began
-        RoundOver,    // A round ended
-        PlayerDied,   // A player died during a round
-        RoundRestart  // Round-over time ended, and pre-round time has begun.
+        Postround,    // A round ended, postround began
+        PlayerDied    // A player died during a round
     }
 
     // Set static for easy references.
@@ -198,9 +199,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
                     gameState = GameState.PostRound;
                     // Send out RoundOver event
                     // Content format is { IdOfWinningTeam }
-                    object[] content = new object[] { 2 };
-                    RaiseEventOptions raiseEventOptions = new RaiseEventOptions { Receivers = ReceiverGroup.All }; // All sends to us as well
-                    PhotonNetwork.RaiseEvent((byte)Events.RoundOver, content, raiseEventOptions, SendOptions.SendReliable);
+                    RaiseEvent(Events.Postround, new object[] { 2 });
 
                 }
                 // Innocent win.
@@ -209,9 +208,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
                     gameState = GameState.PostRound;
                     // Send out RoundOver event
                     // Content format is { IdOfWinningTeam }
-                    object[] content = new object[] { 1 };
-                    RaiseEventOptions raiseEventOptions = new RaiseEventOptions { Receivers = ReceiverGroup.All }; // All sends to us as well
-                    PhotonNetwork.RaiseEvent((byte)Events.RoundOver, content, raiseEventOptions, SendOptions.SendReliable);
+                    RaiseEvent(Events.Postround, new object[] { 1 });
                 }
                 break;
 
@@ -239,29 +236,28 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
 
         if (newState == GameState.PreRound)
         {
+            Log("[GM] Round restart!");
+
             players.ForEach(p =>
             {
                 if (!PhotonNetwork.IsMasterClient) return;
                 p.photonView.RPC("RpcReset", RpcTarget.All);
             });
 
-            // Send out event if we're server
-            // TODO have a simple wrapper method for events sent to everyone
-            if (PhotonNetwork.IsMasterClient)
-            {
-                // Send out RoundStart event
-                // Content format is {  }
-                object[] content = new object[] { };
-                RaiseEventOptions raiseEventOptions = new RaiseEventOptions { Receivers = ReceiverGroup.All }; // All sends to us as well
-                PhotonNetwork.RaiseEvent((byte)Events.RoundRestart, content, raiseEventOptions, SendOptions.SendReliable);
-            }
-
             roundChange.clip = preRound;
             roundChange.Play();
+
+            RaiseEvent(Events.Preround);
+
+            SpawnSceneItems();
+
+            // Tell item spawners to spawn their items
         }
 
         if (newState == GameState.Active)
         {
+            Log("[GM] Round started!");
+
             List<Player> readyPlayers = players.FindAll(p => p.isReady);
             // Assign roles to players.
             // For a simple solution just take a random person to be the traitor
@@ -280,23 +276,51 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
             roundChange.clip = roundStart;
             roundChange.Play();
 
-            // Send out event if we're server
-            // TODO have a simple wrapper method for events sent to everyone
-            if (PhotonNetwork.IsMasterClient)
-            {
-                // Send out RoundStart event
-                // Content format is {  }
-                object[] content = new object[] { };
-                RaiseEventOptions raiseEventOptions = new RaiseEventOptions { Receivers = ReceiverGroup.All }; // All sends to us as well
-                PhotonNetwork.RaiseEvent((byte)Events.RoundStart, content, raiseEventOptions, SendOptions.SendReliable);
-            }
-            Debug.Log("[GM] Round started!");
+            RaiseEvent(Events.RoundStart);
         }
 
         if (newState == GameState.PostRound)
         {
+            Log("[GM] Round over!");
             roundChange.clip = roundOver;
             roundChange.Play();
+
+            // Determine who won
+            int lTraitors = 0;
+            int lInnocents = 0;
+            players.ForEach(delegate (Player p)
+            {
+                if (p.isDead) return; // We don't care about dead people.
+                if (p.Role.ID == 1) lInnocents++;
+                if (p.Role.ID == 2) lTraitors++;
+            });
+            // Traitor win.
+            if (lInnocents == 0)
+            {
+                Debug.Log("[GM] Traitors win!");
+                gameState = GameState.PostRound;
+                // Send out RoundOver event
+                // Content format is { IdOfWinningTeam }
+                RaiseEvent(Events.Postround, new object[] { 2 });
+
+            } else
+            // Innocent win.
+            if (lTraitors == 0)
+            {
+                Debug.Log("[GM] Innocents win!");
+                gameState = GameState.PostRound;
+                // Send out RoundOver event
+                // Content format is { IdOfWinningTeam }
+                RaiseEvent(Events.Postround, new object[] { 1 });
+            } else
+            {
+                // Draw?
+                RaiseEvent(Events.Postround, new object[] { 0 });
+            }
+
+
+            // Clear the scene of any spawned items
+            ClearScene();
         }
     }
 
@@ -362,13 +386,28 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
             // we're in a room. spawn a character for the local player. it gets synced by using PhotonNetwork.Instantiate
             PhotonNetwork.Instantiate(this.playerPrefab.name, GetPlayerSpawnLocation(), Quaternion.identity, 0);
         }
+
+        SpawnSceneItems();
+    }
+
+    public void RaiseEvent(Events eventCode, object[] content)
+    {
+        if (PhotonNetwork.IsMasterClient)
+        {
+            RaiseEventOptions raiseEventOptions = new RaiseEventOptions { Receivers = ReceiverGroup.All }; // All sends to us as well
+            PhotonNetwork.RaiseEvent((byte)eventCode, content, raiseEventOptions, SendOptions.SendReliable);
+        }
+    }
+    public void RaiseEvent(Events eventCode)
+    {
+        RaiseEvent(eventCode, new object[] { });
     }
 
     public void OnEvent(EventData photonEvent)
     {
         int eventCode = photonEvent.Code;
 
-        if (eventCode == (int)Events.RoundOver)
+        if (eventCode == (int)Events.Postround)
         {
             object[] data = (object[])photonEvent.CustomData;
             int winningTeam = (int)data[0];
@@ -402,6 +441,22 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     {
         PhotonView pv = PhotonView.Find(photonViewID);
         PhotonNetwork.Destroy(pv);
+    }
+
+    public void ClearScene()
+    {
+        // Destroy anything with a photonview, including players and spawned objects
+        // DO NOT destroy doors and such 
+        // Players + Pickups? Might be best to mark objects in the future?
+    }
+
+    public void SpawnSceneItems()
+    {
+        ItemSpawn[] itemSpawns = FindObjectsOfType<ItemSpawn>();
+        foreach (ItemSpawn IS in itemSpawns)
+        {
+            IS.SpawnItem();
+        }
     }
 
     public GameObject GetItemFromSpawnList(string listName)

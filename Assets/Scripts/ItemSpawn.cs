@@ -6,29 +6,15 @@ using UnityEngine;
 using ExitGames.Client.Photon;
 using static GameManager;
 
-public class ItemSpawn : MonoBehaviour, IOnEventCallback
+public class ItemSpawn : MonoBehaviour
 {
     [SerializeField]
     string spawnList; // This should match the name of the Object containing SpawnListItem components.
 
-    // Listen for round start to spawn a random item
-    public void OnEvent(EventData photonEvent)
+    // Called by the GameManager on preround
+    public void SpawnItem()
     {
-        int eventCode = photonEvent.Code;
-
-        if (eventCode == (int)Events.RoundStart && PhotonNetwork.IsMasterClient)
-        {
-            SpawnItem();
-        }
-    }
-
-    public void Start()
-    {
-        if (PhotonNetwork.IsMasterClient) SpawnItem();
-    }
-
-    void SpawnItem()
-    {
+        if (!PhotonNetwork.IsMasterClient) return;
         // Find a random item from our list
         GameObject prefab = gm.GetItemFromSpawnList(spawnList);
         gm.Log("Spawning item: " + prefab.name);

@@ -15,7 +15,8 @@ public class UI_commandWindow : MonoBehaviourPun
     };
     string[] serverCommands = // Commands run only by the server/host
     {
-        "SPAWN"
+        "SPAWN",
+        "ROUNDRESTART"
     };
 
     string[] spawnableItems = {
@@ -105,6 +106,15 @@ public class UI_commandWindow : MonoBehaviourPun
             case "KILL":
                 // Currently you can only kill your own player
                 if (pmi.Sender.IsLocal) p.Die();
+                break;
+
+            case "ROUNDRESTART":
+                // Set round to postround
+                gm.gameState = GameState.PostRound;
+                // Set roundovertime to something smaller than maxroundovertime
+                gm.curPostRoundTime = gm.postRoundTime - 1;
+                // This should initiate the postround cleanup, give it time, then start the preround spawning
+                // TODO somehow force a draw with no points
                 break;
 
             default:
