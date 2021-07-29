@@ -4,7 +4,9 @@ using UnityEngine;
 using Photon.Pun;
 using static GameManager;
 
-public class Gun : MonoBehaviourPun, IPunObservable
+// TODO recoil/firing inaccuracy
+
+public class Gun : MonoBehaviourPun
 {
     // Model recoil while shooting
     // Save the default model and max-recoil position (which will be Vector3.zero)
@@ -15,7 +17,7 @@ public class Gun : MonoBehaviourPun, IPunObservable
     // Time between shots (everything is full auto, even a sniper)
     public float timeUntilNextShot = 0f;
     public float timeBetweenShots = 0.5f;
-    // Shots in mag
+    // Shots currently in mag
     public int bulletsInMag = 10;
     // Mag size
     public int magazineSize = 10;
@@ -29,8 +31,6 @@ public class Gun : MonoBehaviourPun, IPunObservable
 
     // is trigger being held down, set by HeldItem
     public bool triggerDown = false;
-    // Angle around which recoil is applied to character/camera. This is right for most guns, which recoil upwards.
-    //Vector3 recoilVector = Vector3.right;
     // Origin point set by HeldItem
     public Vector3 aimOrigin;
     // Axis around which recoil turns the gun
@@ -58,7 +58,7 @@ public class Gun : MonoBehaviourPun, IPunObservable
     // Reload sound
     public AudioSource reloadSound;
     // Ref to fpscontoller of the person holding this gun, so we can add recoil to the camera via it
-    public fps_controller fpsController;
+    public FpsController fpsController;
     // Ref to the camera, which we use for aiming
     public Camera cam;
 
@@ -83,7 +83,7 @@ public class Gun : MonoBehaviourPun, IPunObservable
         owner.heldItem = this.gameObject;
         owner.heldItemScript = owner.heldItem.GetComponent<HeldItem>();
 
-        fpsController = GetComponentInParent<fps_controller>();
+        fpsController = GetComponentInParent<FpsController>();
         cam = fpsController.playerCamera;
     }
 
@@ -103,41 +103,11 @@ public class Gun : MonoBehaviourPun, IPunObservable
         if (Physics.Raycast(origin, forward, out hit, range))
         {
             // TODO pool objects
-            // TODO network instantiate or send rpc to clients?
             //Spawn the decal object just above the surface the raycast hit
             GameObject decalObject = Instantiate(decalPrefab, hit.point + (hit.normal * 0.025f), Quaternion.FromToRotation(decalPrefab.transform.up, hit.normal)) as GameObject;
-            //Rotate the decal object so that it's "up" direction is the surface the raycast hit
-            //decalObject.transform.rotation = Quaternion.FromToRotation(hit.normal, decalPrefab.transform.up);
             // Parent the decal object to the hit gameobject so it can move around
-            //decalObject.transform.parent = hit.transform;
+            decalObject.transform.parent = hit.transform;
         }
-    }
-
-    // (requiresAuthority = false)
-    // Run on the server, initiated by client when shooting a gun
-    //[Command]
-    void CmdShoot(Vector3 origin, Vector3 forward)
-    {
-        RpcDoSoundAndVisuals(true, origin, forward);
-        // Tell clients to do audio/visual stuff
-        photonView.RPC("RpcDoSoundAndVisuals", RpcTarget.Others, false, origin, forward);
-
-        // Declare a raycast hit to store information about what our raycast has hit
-        RaycastHit hit;
-        // Check if our raycast has hit anything
-        if (Physics.Raycast(origin, forward, out hit, range))
-        {
-            // Tell the object we hit to take damage
-            hit.transform.gameObject.SendMessage("TakeDamage", damage, SendMessageOptions.DontRequireReceiver);
-
-            // Check if the object we hit has a rigidbody attached
-            if (hit.rigidbody != null)
-            {
-                // Add force to the rigidbody we hit, in the direction from which it was hit
-                hit.rigidbody.AddForce(-hit.normal * shotForce);
-            }
-        }
-
     }
 
     // Attempt to shoot, called when left-clicking
@@ -159,17 +129,28 @@ public class Gun : MonoBehaviourPun, IPunObservable
             return;
         }
 
-        // Create a vector at the center of our camera's viewport
-        //Vector3 rayOrigin = cam.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, 0.0f));
+        // Tell ourselves to do the visuals immediately to avoid lag
+        RpcDoSoundAndVisuals(true, aimOrigin, cam.transform.forward);
+        // Tell clients to do audio/visual stuff
+        photonView.RPC("RpcDoSoundAndVisuals", RpcTarget.Others, false, aimOrigin, cam.transform.forward);
 
-        // Tell server we're shooting
-        // Add recoil to our aim vector
-        //Vector3 recoilVector = Quaternion.AngleAxis(-currentRecoil, recoilAxis) * aimVector;
-        CmdShoot(aimOrigin, cam.transform.forward);
+        // Declare a raycast hit to store information about what our raycast has hit
+        RaycastHit hit;
+        // Check if our raycast has hit anything
+        if (Physics.Raycast(aimOrigin, cam.transform.forward, out hit, range))
+        {
+            // Tell the object we hit to take damage
+            // TODO needs to be RPCd
+            hit.transform.gameObject.SendMessage("TakeDamage", damage, SendMessageOptions.DontRequireReceiver);
 
-        // Add recoil
-        //currentRecoil += recoilPerShot;
-        //if (currentRecoil > maxRecoil) currentRecoil = maxRecoil;
+            // Check if the object we hit has a rigidbody attached
+            if (hit.rigidbody != null)
+            {
+                // TODO not networked
+                // Add force to the rigidbody we hit, in the direction from which it was hit
+                hit.rigidbody.AddForce(-hit.normal * shotForce);
+            }
+        }
 
         // Add recoil to camera/character
         if (fpsController)
@@ -179,10 +160,6 @@ public class Gun : MonoBehaviourPun, IPunObservable
         {
             gm.LogError("[Gun] Cannot find fps_controller to add camera wiggle");
         }
-        //cam.transform.Rotate(transform.right, recoilPerShot);
-        //cam.transform.Rotate(Vector3.right, -recoilPerShot * recoilVector.normalized.x); // HEY this won't work because cam is fixed to y axis. We need to rotate character instead
-        // So how do we do that? Any y rotation goes to character, and x rotation goes to camera. Split out euler angles of gun?
-        //cam.transform.parent.Rotate(Vector3.up, -recoilPerShot * recoilVector.normalized.y);
     }
 
     // Called when the player hits the reload key
@@ -213,23 +190,6 @@ public class Gun : MonoBehaviourPun, IPunObservable
         // Move our gun when fired. Doesn't affect aim, just visual.
         float lerpAmount = timeUntilNextShot / timeBetweenShots;
         this.transform.localPosition = Vector3.Lerp(minRecoilPosition, maxRecoilPosition, lerpAmount);
-
-        // Hold gun sideways if it supports it. Sets recoil vector as well;
-        // Can't do this when reloading
-        //if (modelAnchor && supportsSideways && !isReloading)
-        //{
-        //    float rot;
-        //    if (Input.GetMouseButton(1))
-        //    {
-        //        rot = 90f;
-        //        recoilVector = Vector3.up;
-        //    } else
-        //    {
-        //        rot = 0f;
-        //        recoilVector = Vector3.right;
-        //    }
-        //    modelAnchor.transform.localRotation = Quaternion.Euler(0f, 0f, rot);
-        //}
 
         if (isReloading)
         {
@@ -262,15 +222,4 @@ public class Gun : MonoBehaviourPun, IPunObservable
         }
     }
 
-    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
-    {
-        if (stream.IsWriting)
-        {
-            stream.SendNext(bulletsInMag);
-        }
-        else
-        {
-            this.bulletsInMag = (int)stream.ReceiveNext();
-        }
-    }
 }

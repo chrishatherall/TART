@@ -38,11 +38,11 @@ public class UI_devOverlay : MonoBehaviour
         // Room code
         info += "Room code: " + PhotonNetwork.CurrentRoom.Name + "\n";
         // Game state
-        info += "Game mode/state: " + PhotonNetwork.CurrentRoom.CustomProperties["gamemode"] + ":" + gm.gameState + "\n";
+        info += "Game mode/state: " + PhotonNetwork.CurrentRoom.CustomProperties["gamemode"] + ":" + gm.CurrentGameState + "\n";
         // Player info
         gm.players.ForEach(delegate (Player p)
         {
-            info += "[" + p.id + ":" + p.nickname + "]\t" + p.Role.Name + "\toil/damage:" + p.oil + "/" + p.damage + "\t\tisDead:" + p.isDead + "\tready:" + p.isReady + "\n";
+            info += "[" + p.ID + ":" + p.nickname + "]\t" + p.Role.Name + "\toil/damage:" + p.oil + "/" + p.damage + "\t\tisDead:" + p.isDead + "\tready:" + p.isReady + "\n";
         });
         info += "\nPre-round time: " + gm.preRoundTime;
 

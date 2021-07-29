@@ -15,13 +15,13 @@ public delegate void LogEntry(string message, bool error);
 
 public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCallback
 {
+    // Enum for the different game states
     public enum GameState
     {
         PreRound,
         Active,
         PostRound
     }
-
     // Events for STUFF happening. This should contain loads of things, so we can easily make weird weapons and items.
     public enum Events
     {
@@ -29,25 +29,25 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         Preround,     // Preround started
         RoundStart,   // A round began
         Postround,    // A round ended, postround began
+        InnocentWin,
+        TraitorWin,
         PlayerDied    // A player died during a round
     }
 
-    // Set static for easy references.
+    // Set static for easy reference in other scripts.
     public static GameManager gm;
 
     // Game-level alerts
     public event Alert OnGameAlert;
-
     // Log events
     public event LogEntry OnLog;
 
     // Ref to the ui we need to enable after loading
     public GameObject ui;
-
     // The player prefab we spawn for ourselves
     public GameObject playerPrefab;
 
-    // The round over noise.
+    // Round-change noises.
     [SerializeField]
     AudioSource roundChange;
     [SerializeField]
@@ -57,15 +57,11 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     [SerializeField]
     AudioClip roundOver;
 
-    // Current state of the game.
-    // 0 - pre-round
-    // 1 - active
-    // 2 - post-round
-    public GameState gameState = GameState.PreRound;
+    // Current and previous state of the game.
+    private GameState _curGameState = GameState.PreRound;
     private GameState previousGameState = GameState.PreRound;
 
-    // Connected players. When a player script wakes, it find a GameManager 
-    // and adds itself via AddPlayer.
+    // Connected players. Player scripts add themselves on startup via AddPlayer
     public List<Player> players;
 
     // Minimum numbers of players required to start a round.
@@ -74,34 +70,39 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     // Role list
     private List<TartRole> roles;
 
-    // Ref to the UI alert script
-    private UI_alert alert;
-
     // Round delay times (seconds)
     public float preRoundTime = 15;
     public float curPreRoundTime;
-
     public float postRoundTime = 15;
     public float curPostRoundTime;
 
-    // Player spawn locations
+    // Player spawn locations, discovered on startup
     public PlayerSpawn[] playerSpawnLocations;
 
-    // List of gameobjects with spawnitems
+    // List of gameobjects with spawnitems, needs to be set manually
     public List<GameObject> spawnTables;
+
+    public GameState CurrentGameState { 
+        get => _curGameState; 
+        set {
+            previousGameState = _curGameState;
+            _curGameState = value;
+            GameStateChanged(previousGameState, _curGameState);
+        }
+    }
 
     // Sync values
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
         if (stream.IsWriting)
         {
-            stream.SendNext(gameState);
+            stream.SendNext(CurrentGameState);
             stream.SendNext(curPreRoundTime);
             stream.SendNext(curPostRoundTime);
         }
         else
         {
-            this.gameState = (GameState)stream.ReceiveNext();
+            this.CurrentGameState = (GameState)stream.ReceiveNext();
             this.curPreRoundTime = (float)stream.ReceiveNext();
             this.curPostRoundTime = (float)stream.ReceiveNext();
         }
@@ -136,32 +137,39 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         // This is an empty function so onlog can invoke SOMETHING. It errors otherwise.
         OnLog += (m,b) => { };
 
-        Log("[GameManager] Started. State is " + gameState);
+        Log("[GM] Started. State is " + CurrentGameState);
 
         ui.SetActive(true);
+    }
+
+    public void Start()
+    {
+        // TEMP. Makes a player prefab for us. Doesn't check for rounds in progress
+        if (playerPrefab == null)
+        {
+            LogError("[GM] Missing playerPrefab Reference.");
+        }
+        else
+        {
+            // Spawn a character for the local player
+            PhotonNetwork.Instantiate(this.playerPrefab.name, GetPlayerSpawnLocation(), Quaternion.identity, 0);
+        }
+
+        // Tell all scene spawn points to spawn their items
+        SpawnSceneItems();
     }
 
     // Update is called once per frame
     void Update()
     {
-        // Check all players still exist
-        // TODO not sure about this one!!
-        players.ForEach(delegate (Player p)
-        {
-            if (!p) players.Remove(p);
-        });
+        // Remove any players from the list that don't exist
+        players.RemoveAll(delegate (Player p) { return !p; });
 
-        // Check if the game state changed
-        if (gameState != previousGameState)
-        {
-            GameStateChanged(previousGameState, gameState);
-            previousGameState = gameState;
-        }
-
-        // Only the server should handle round control
+        // Further code is run by the server only
         if (!PhotonNetwork.IsMasterClient) return;
 
-        switch (gameState)
+        // Determine state changes
+        switch (_curGameState)
         {
             // Pre-round
             case GameState.PreRound:
@@ -176,7 +184,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
                     }
                     // Reset pre-round time
                     curPreRoundTime = preRoundTime;
-                    gameState = GameState.Active;
+                    CurrentGameState = GameState.Active;
                 }
                 break;
 
@@ -196,19 +204,15 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
                 if (lInnocents == 0)
                 {
                     Debug.Log("[GM] Traitors win!");
-                    gameState = GameState.PostRound;
-                    // Send out RoundOver event
-                    // Content format is { IdOfWinningTeam }
-                    RaiseEvent(Events.Postround, new object[] { 2 });
+                    CurrentGameState = GameState.PostRound;
+                    RaiseEvent(Events.TraitorWin);
 
                 }
                 // Innocent win.
                 if (lTraitors == 0) {
                     Debug.Log("[GM] Innocents win!");
-                    gameState = GameState.PostRound;
-                    // Send out RoundOver event
-                    // Content format is { IdOfWinningTeam }
-                    RaiseEvent(Events.Postround, new object[] { 1 });
+                    CurrentGameState = GameState.PostRound;
+                    RaiseEvent(Events.InnocentWin);
                 }
                 break;
 
@@ -222,7 +226,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
                 }
                 // Reset pre-round time
                 curPostRoundTime = postRoundTime;
-                gameState = GameState.PreRound;
+                CurrentGameState = GameState.PreRound;
                 break;
 
             default:
@@ -230,94 +234,68 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         }
     }
 
+    // Called when the game state changes
     void GameStateChanged(GameState oldState, GameState newState)
     {
         Alert("[GM] Game state changed from " + oldState + " to " + newState);
 
+        #region PreRound
         if (newState == GameState.PreRound)
         {
-            Log("[GM] Round restart!");
+            Log("[GM] Preround starting!");
 
             roundChange.clip = preRound;
             roundChange.Play();
 
             RaiseEvent(Events.Preround);
 
+            // Tell item spawners to spawn their items
             SpawnSceneItems();
 
-            ResetPlayers();
-
-            // Tell item spawners to spawn their items
+            ResetPlayers();            
         }
+        #endregion
 
+        #region Round start
         if (newState == GameState.Active)
         {
             Log("[GM] Round started!");
 
-            List<Player> readyPlayers = players.FindAll(p => p.isReady);
-            // Assign roles to players.
-            // For a simple solution just take a random person to be the traitor
-            int[] roles = new int[players.Count];
-            System.Random rnd = new System.Random();
-            roles[rnd.Next(0, players.Count - 1)] = 2; // Set random person as traitor
-            int index = 0;
-            readyPlayers.ForEach(delegate (Player p)
+            if (PhotonNetwork.IsMasterClient)
             {
-                if (!PhotonNetwork.IsMasterClient) return;
-                int roleId = roles[index] == 0 ? 1 : roles[index];
-                p.photonView.RPC("SetRoleById", RpcTarget.All, roleId);
-                index++;
-            });
+                List<Player> readyPlayers = players.FindAll(p => p.isReady);
+                // Assign roles to players.
+                // For a simple solution just take a random person to be the traitor
+                int[] roles = new int[players.Count];
+                System.Random rnd = new System.Random();
+                roles[rnd.Next(0, players.Count - 1)] = 2; // Set random person as traitor
+                int index = 0;
+                readyPlayers.ForEach(delegate (Player p)
+                {
+                    int roleId = roles[index] == 0 ? 1 : roles[index];
+                    p.photonView.RPC("SetRoleById", RpcTarget.All, roleId);
+                    index++;
+                });
+            }
 
             roundChange.clip = roundStart;
             roundChange.Play();
 
             RaiseEvent(Events.RoundStart);
         }
+        #endregion
 
+        #region Postround
         if (newState == GameState.PostRound)
         {
             Log("[GM] Round over!");
             roundChange.clip = roundOver;
             roundChange.Play();
 
-            // Determine who won
-            int lTraitors = 0;
-            int lInnocents = 0;
-            players.ForEach(delegate (Player p)
-            {
-                if (p.isDead) return; // We don't care about dead people.
-                if (p.Role.ID == 1) lInnocents++;
-                if (p.Role.ID == 2) lTraitors++;
-            });
-            // Traitor win.
-            if (lInnocents == 0)
-            {
-                Debug.Log("[GM] Traitors win!");
-                gameState = GameState.PostRound;
-                // Send out RoundOver event
-                // Content format is { IdOfWinningTeam }
-                RaiseEvent(Events.Postround, new object[] { 2 });
-
-            } else
-            // Innocent win.
-            if (lTraitors == 0)
-            {
-                Debug.Log("[GM] Innocents win!");
-                gameState = GameState.PostRound;
-                // Send out RoundOver event
-                // Content format is { IdOfWinningTeam }
-                RaiseEvent(Events.Postround, new object[] { 1 });
-            } else
-            {
-                // Draw?
-                RaiseEvent(Events.Postround, new object[] { 0 });
-            }
-
-
             // Clear the scene of any spawned items
             ClearScene();
         }
+        #endregion
     }
 
     public Vector3 GetPlayerSpawnLocation()
@@ -326,7 +304,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         // spawns. We don't want people spawning inside each other.
         if (playerSpawnLocations.Length == 0)
         {
-            Debug.LogError("[GM] Couldnt get player spawn, list is empty.");
+            LogError("[GM] Couldnt get player spawn, list is empty.");
             return Vector3.zero;
         }
         int index = Random.Range(0, playerSpawnLocations.Length);
@@ -345,7 +323,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
 
     public Player GetPlayerByID(int id)
     {
-        return players.Find(p => p.id == id);
+        return players.Find(p => p.ID == id);
     }
 
     public Player GetPlayerByActorNumber(int id)
@@ -355,9 +333,9 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
 
     public void AddPlayer(Player player)
     {
-        if (GetPlayerByID(player.id))
+        if (GetPlayerByID(player.ID))
         {
-            Alert("[GM] Tried to add player that already exists!");
+            LogError("[GM] Tried to add player that already exists!");
             return;
         }
         players.Add(player);
@@ -367,23 +345,6 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     public override void OnLeftRoom()
     {
         SceneManager.LoadScene(0);
-    }
-
-    public void Start()
-    {
-        // TEMP. Makes a player prefab for us. Doesn't check for rounds in progress
-        if (playerPrefab == null)
-        {
-            Debug.LogError("<Color=Red><a>Missing</a></Color> playerPrefab Reference. Please set it up in GameObject 'Game Manager'", this);
-        }
-        else
-        {
-            Debug.LogFormat("We are Instantiating LocalPlayer from {0}", Application.loadedLevelName);
-            // we're in a room. spawn a character for the local player. it gets synced by using PhotonNetwork.Instantiate
-            PhotonNetwork.Instantiate(this.playerPrefab.name, GetPlayerSpawnLocation(), Quaternion.identity, 0);
-        }
-
-        SpawnSceneItems();
     }
 
     public void RaiseEvent(Events eventCode, object[] content)
@@ -402,33 +363,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     public void OnEvent(EventData photonEvent)
     {
         int eventCode = photonEvent.Code;
-
-        if (eventCode == (int)Events.Postround)
-        {
-            object[] data = (object[])photonEvent.CustomData;
-            int winningTeam = (int)data[0];
-
-            switch (winningTeam)
-            {
-                case 1:
-                    Alert("Innocents win!");
-                    break;
-
-                case 2:
-                    Alert("Traitors win!");
-                    break;
-
-                default:
-                    Alert("Unknown team win!");
-                    break;
-            }
-        }
-
-        if (eventCode == (int)Events.RoundStart)
-        {
-            Alert("Round started!");
-        }
-        
+        Log($"[GM] Received Photon event code " + eventCode);
     }
 
     // Called by a client when destroying an item (eg, picking it up from the ground)
@@ -460,9 +395,9 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     public void SpawnSceneItems()
     {
         ItemSpawn[] itemSpawns = FindObjectsOfType<ItemSpawn>();
-        foreach (ItemSpawn IS in itemSpawns)
+        foreach (ItemSpawn spawn in itemSpawns)
         {
-            IS.SpawnItem();
+            spawn.SpawnItem();
         }
     }
 
@@ -472,7 +407,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         GameObject spawnTable = spawnTables.Find(st => st.name == listName);
         if (!spawnTable)
         {
-            Debug.Log("[GM] Cannot find spawn table: '" + listName + "'.");
+            Log($"[GM] Cannot find spawn table: '{listName}'.");
             return null;
         }
         // Get all spawnable items under this spawn table.
@@ -480,7 +415,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         // Check that the list isn't empty.
         if (spawnItems.Length == 0)
         {
-            Debug.Log("[GM] Spawn table '" + listName + "' is empty.");
+            Log($"[GM] Spawn table '{listName}' is empty.");
             return null;
         }
         // Return a random item from the list. TODO this ignores weighting

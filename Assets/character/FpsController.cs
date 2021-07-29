@@ -8,7 +8,7 @@ using static GameManager;
 // as the basic CharacterController can't handle acceleration changes, and won't be affected by
 // environmental affects.
 
-public class fps_controller : MonoBehaviourPun
+public class FpsController : MonoBehaviourPun
 {
 
     #region Camera Movement Variables
@@ -35,32 +35,37 @@ public class fps_controller : MonoBehaviourPun
     #endregion
 
     // Character move speed.
-    public float speed = 6.0f;
-    // Strangth of gravity
-    public float gravity = -10f;
+    [SerializeField]
+    float speed = 6.0f;
+    // Strength of gravity
+    [SerializeField]
+    float gravity = -10f;
     // Speed at which the character is falling.
     [SerializeField]
-    private float fallingSpeed = 0f;
+    float fallingSpeed = 0f;
     // Strength of a jump.
-    public float jumpStrength = 6f;
+    [SerializeField]
+    float jumpStrength = 6f;
     // Is character currently crouching
     bool isCrouching = false;
 
     // Create a layermask which ignores layer 7, so we dont constantly activate ourselves
     int layermask = ~(1 << 7);
     // Range at which we can activate buttons/doors
-    public float activateRange = 2f;
+    [SerializeField]
+    float activateRange = 2f;
     // Reference to our camera
     private Camera cam;
     float camHeight;
     // Reference to our player script
-    public Player player;
+    [SerializeField]
+    Player player;
 
-    // Movement values
+    // Movement values for animation controller
     public bool isGrounded;
-    public float frontBackMovement; // For anim controller
-    public float leftRightMovement; // For anim controller
-    public bool isMoving;           // For anim controller
+    public float frontBackMovement;
+    public float leftRightMovement;
+    public bool isMoving;
 
     // Ref to the character controller.
     CharacterController charCon;
@@ -68,8 +73,9 @@ public class fps_controller : MonoBehaviourPun
     // Ref to the player inventory
     Inventory inventory;
     // Ref to the top of our head, for determining if we can uncrouch
-    public GameObject topOfHead;
-
+    [SerializeField]
+    GameObject topOfHead;
+    // The audio source we use to emit sounds from this character
     private AudioSource audioSource; 
 
     // The text box shown below our cursor, for displaying information on pickups, activatables, etc
@@ -109,10 +115,10 @@ public class fps_controller : MonoBehaviourPun
 
         if (!player || !charCon || !inventory)
         {
-            gm.LogError("[fps_controller] Missing components!");
+            gm.LogError("[FpsController] Missing components!");
         }
 
-        // turn off the cursor
+        // Turn off the cursor
         Cursor.lockState = CursorLockMode.Locked;
 
         ccHeight = charCon.height;
@@ -155,7 +161,6 @@ public class fps_controller : MonoBehaviourPun
         CamWiggleObject.transform.localRotation = rotAmount;
         #endregion
 
-
         #region Crouching
         if (!isCrouching && Input.GetKey(KeyCode.LeftControl))
         {
@@ -181,13 +186,12 @@ public class fps_controller : MonoBehaviourPun
         }
         #endregion
 
+        #region Movement
         // Clean up tooltip text
         cursorTooltip.text = "";
 
-        // just for debugging
+        // Set grounded flag for the animation controller
         isGrounded = charCon.isGrounded;
-
-        // TODO allow less control in the air
 
         // Get input values 
         frontBackMovement = Input.GetAxis("Vertical");
@@ -200,10 +204,7 @@ public class fps_controller : MonoBehaviourPun
         Vector3 moveDirection = forward + strafe;
         moveDirection *= speed;
 
-        // Reduce air movement influence (this will cause us to stop dead if we run-jump)
-        //if (!charCon.isGrounded) moveDirection *= 0.1f;
-
-        if (player.isDead) // Don't allow movement if dead, by overwriting input
+        if (player.isDead) // Don't allow movement input if dead, by overwriting input
         {
             moveDirection = new Vector3();
         }
@@ -230,96 +231,65 @@ public class fps_controller : MonoBehaviourPun
         // Instruct the controller to move us
         charCon.Move(moveDirection * Time.deltaTime);
 
+        #endregion
 
-        if (Input.GetKeyDown("escape"))
-        {
-            // turn on the cursor
-            Cursor.lockState = CursorLockMode.None;
-        }
-
+        #region Key-specific events
         // Throw objects
         if (Input.GetKeyDown("g") && player.heldItem)
         {
             TryDropHeldItem();
         }
+        #endregion
 
-        // Highlight objects we're targeting
-        RaycastHit hit;
-        // Check if our raycast has hit anything
+        #region Interaction
+
+        // Raycast forward from our camera to see if we're looking at anything important within range.
         if (!cam) cam = GetComponentInChildren<Camera>();
         Vector3 rayOrigin = cam.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, 0.0f));
-        
-
+        RaycastHit hit;
         bool hitSomething = Physics.Raycast(rayOrigin, cam.transform.forward, out hit, activateRange, layermask);
         if (hitSomething)
         {
-
             // Find a pickup
             Pickup pickup = hit.transform.GetComponent<Pickup>();
-            if (pickup != null && pickup.enabled == true)
+            if (pickup && pickup.enabled == true)
             {
                 // Set our ui tooltip
                 cursorTooltip.text = "[E] Pick up " + pickup.nickname;
 
-                // Pick up item on E
-                // TODO none of this is sync'd
-                if (Input.GetKeyDown(KeyCode.E))
-                {
-                    TryPickupItem(pickup.gameObject);
-/*                  // Set the pickup's parent to our gun anchor
-                    hit.transform.parent = player.itemAnchor.transform;
-                    // Turn off gravity for that object
-                    hit.transform.GetComponent<Rigidbody>().useGravity = false;
-                    hit.transform.GetComponent<BoxCollider>().enabled = false;
-                    // Reset the position/rotation of the pickup
-                    hit.transform.localPosition = new Vector3(0f, 0f, 0f);
-                    hit.transform.localRotation = new Quaternion(0f, 0f, 0f, 0f);
-                    // Disable the pickup component so it can't be grabbed from our hands
-                    pickup.enabled = false;
-                    // Tell our player script that we're holding something
-                    player.heldItem = hit.transform.gameObject;*/
-                }
-
+                // Try to pick up items
+                if (Input.GetKeyDown(KeyCode.E)) TryPickupItem(pickup.gameObject);
             }
-
-           
-
-            // TODO make right-click hold the mac sideways like a gangsta
 
             // Find an activatable
             Activatable act = hit.transform.GetComponent<Activatable>();
-
-            if (act != null)
+            if (act)
             {
                 // Set our ui tooltip
                 cursorTooltip.text = "[E] Activate " + act.nickname;
 
-                // Activate objects
-                if (Input.GetKeyDown(KeyCode.E))
-                {
-                    TryToActivate(hit.transform.gameObject, hit.point);
-                }
+                // Try to activate objects
+                if (Input.GetKeyDown(KeyCode.E)) TryToActivate(hit.transform.gameObject, hit.point);
             } 
-
-
         } 
         else 
         {
-            // Remove ui tooltip
-            // TODO this is not a perfect thing, kinda buggy
+            // We're not looking at anything in range, so clear te UI tooltip
             cursorTooltip.text = "";
         }
 
+        #endregion
 
+        #region Misc
         // Tell held item about some stuff
         if (player.heldItemScript)
         {
             player.heldItemScript.SetValues(rayOrigin, Input.GetButton("Fire1"));
         }
-
+        #endregion
     }
 
-     void TryPickupItem (GameObject item)
+    void TryPickupItem (GameObject item)
     {
         // If the player is already holding an item, drop it before picking up the new one
         if (player.heldItem)
@@ -330,23 +300,15 @@ public class fps_controller : MonoBehaviourPun
 
         // Find the PhotonView of the item to be picked up
         PhotonView PV = item.GetComponent<PhotonView>();
-
-        if (!item || !PV || !item.GetComponent<Pickup>())
-        {
-            gm.LogError($"[fps_controller] player {player.id} tried to pick up missing item");
-            return;
-        }
-        gm.Log($"[fps_controller] player {player.id} is picking up {item.GetComponent<Pickup>().nickname}");
-
-        // Delete old held item
-        //if (player.heldItem) Destroy(player.heldItem);
-        //player.heldItem = Instantiate(item.GetComponent<Pickup>().prefabHeld, player.itemAnchor.transform);
-        //NetworkServer.Spawn(player.heldItem, player.gameObject);
-        //player.heldItem.GetComponent<NetworkIdentity>().AssignClientAuthority(player.GetComponent<NetworkIdentity>().connectionToClient);
-        //player.heldItemScript = player.heldItem.GetComponent<HeldItem>();
-
         // Find pickup script
         Pickup pickup = item.GetComponent<Pickup>();
+
+        if (!item || !PV || !pickup)
+        {
+            gm.LogError($"[FpsController] player {player.ID} tried to pick up missing item");
+            return;
+        }
+        gm.Log($"[FpsController] player {player.ID} is picking up {item.GetComponent<Pickup>().nickname}");
 
         // Play sound if the pickup has one
         if (pickup.pickupSound)
@@ -355,51 +317,53 @@ public class fps_controller : MonoBehaviourPun
             audioSource.Play();
         }
 
-        // TEMP
-        // Do a check to see if we're picking up a non-held item like a keycard
+        // Check to see if we're picking up a non-held item like a key
         if (!pickup.prefabHeld)
         {
             gm.Alert("Picked up " + pickup.nickname);
-            inventory.AddItem(pickup.nickname);
-            Destroy(item);
+            inventory.AddItem(pickup);
+            Destroy(item); // Note, this only destroys the item for us
             return;
         }
 
-        //GameObject newItem = Instantiate(pickup.prefabHeld, player.itemAnchor.transform); // may need to set pos/rot
-        GameObject newItem = PhotonNetwork.Instantiate(pickup.prefabHeld.name, player.itemAnchor.transform.position, Quaternion.Euler(0f,0f,0f)); // rotation?!
+        // Create new item in our hands
+        GameObject newItem = PhotonNetwork.Instantiate(pickup.prefabHeld.name, player.itemAnchor.transform.position, Quaternion.identity);
 
         // Server should destroy the original
         GameManager.gm.photonView.RPC("DestroyItem", RpcTarget.MasterClient, PV.ViewID);
 
-        // Setup the gun and tell others to
-        newItem.GetComponent<Gun>().Setup(player.id);
-        newItem.GetPhotonView().RPC("Setup", RpcTarget.Others, player.id);
-
-        // Destroy the original pickup
-        // TODO not 100% about it being done here but if it's done immediately on the server then the server client
-        // can't create the held item.
-        //Destroy(item);
+        // Setup the gun and tell other players to
+        // TODO assumes it's a gun
+        newItem.GetComponent<Gun>().Setup(player.ID);
+        newItem.GetPhotonView().RPC("Setup", RpcTarget.Others, player.ID);
     }
 
+
+    // Drops our held item into the world
     void TryDropHeldItem ()
     {
-        if (player.heldItem)
-        {
-            // Tell everyone we're dropping this item
-            photonView.RPC("RpcDropItem", RpcTarget.All, player.heldItemScript.worldPrefab.name, true);
-        }
+        if (player.isDead || !player.heldItem) return;
+        TryDropItem(player.heldItemScript.worldPrefab.name);
+        // Destroy the item in our hands.
+        PhotonNetwork.Destroy(player.heldItem);
+    }
+
+    // Drops an item into the world
+    void TryDropItem (string prefabName)
+    {
+        if (player.isDead) return;
+        // Tell server we're dropping our held item.
+        photonView.RPC("RpcDropItem", RpcTarget.MasterClient, player.heldItemScript.worldPrefab.name);
     }
 
     [PunRPC]
-    void RpcDropItem (string prefabName, bool destroyHeldItem)
+    void RpcDropItem (string prefabName)
     {
-        gm.Log($"Player {player.nickname} dropping item {prefabName}");
-
-        if (destroyHeldItem) Destroy(player.heldItem);
-
-        // Only server should create new item
         if (!PhotonNetwork.IsMasterClient) return;
+        gm.Log($"Player {player.nickname} dropping item {prefabName}");
+        // Create item being dropped
         GameObject go = PhotonNetwork.InstantiateRoomObject(prefabName, cam.transform.position, transform.rotation);
+        // Add some force so it moves away from the player who dropped it
         go.GetComponent<Rigidbody>().AddForce(cam.transform.forward * 1000);
     }
 
@@ -411,9 +375,9 @@ public class fps_controller : MonoBehaviourPun
     void TryToActivate(GameObject go, Vector3 position)
     {
         if (player.isDead) return;
-        // Find an activatable and make sure it has a photonview
+        // Find an activatable
         Activatable act = go.GetComponent<Activatable>();
-        if (act == null) return;
+        if (!act) return;
         // Check we have the right key if it's required
         if (act.requiredKey != "" && !inventory.HasItem(act.requiredKey))
         {
@@ -422,8 +386,15 @@ public class fps_controller : MonoBehaviourPun
             gm.Log("NEED " + act.requiredKey);
             return;
         }
-        PhotonView PV = go.GetComponent<PhotonView>();
-        if (PV) PV.RPC("Activate", RpcTarget.All, position); // Send to all to other clients can make button noises and such
-        else act.Activate(position); // Local-only activatables
+        act.Activate(position);
+        //PhotonView PV = go.GetComponent<PhotonView>();
+        //if (PV) // If the activatable has a photonview, send out a message saying we're activating it
+        //{
+        //    PV.RPC("Activate", RpcTarget.All, position); // Send to all to other clients can make button noises and such
+        //}
+        //else // If no photonview, it's a local-only activatable
+        //{
+        //    act.Activate(position);
+        //}
     }
 }

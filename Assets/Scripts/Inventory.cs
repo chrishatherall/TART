@@ -18,6 +18,11 @@ public class Inventory : MonoBehaviour
         items.Add(item);
     }
 
+    public void AddItem(Pickup pickup)
+    {
+        items.Add(pickup.nickname);
+    }
+
     public bool HasItem(string item)
     {
         return items.Find(i => i==item) != null;

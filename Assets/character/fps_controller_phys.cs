@@ -307,10 +307,10 @@ public class fps_controller_phys : MonoBehaviourPun
 
         if (!item || !PV || !item.GetComponent<Pickup>())
         {
-            Debug.LogError($"[fps_controller] player {player.id} tried to pick up missing item");
+            Debug.LogError($"[fps_controller] player {player.ID} tried to pick up missing item");
             return;
         }
-        Debug.Log($"[fps_controller] player {player.id} is picking up {item.GetComponent<Pickup>().nickname}");
+        Debug.Log($"[fps_controller] player {player.ID} is picking up {item.GetComponent<Pickup>().nickname}");
 
         // Delete old held item
         //if (player.heldItem) Destroy(player.heldItem);
@@ -346,8 +346,8 @@ public class fps_controller_phys : MonoBehaviourPun
         GameManager.gm.photonView.RPC("DestroyItem", RpcTarget.MasterClient, PV.ViewID);
 
         // Setup the gun and tell others to
-        newItem.GetComponent<Gun>().Setup(player.id);
-        newItem.GetPhotonView().RPC("Setup", RpcTarget.Others, player.id);
+        newItem.GetComponent<Gun>().Setup(player.ID);
+        newItem.GetPhotonView().RPC("Setup", RpcTarget.Others, player.ID);
 
         // Destroy the original pickup
         // TODO not 100% about it being done here but if it's done immediately on the server then the server client

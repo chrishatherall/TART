@@ -60,10 +60,6 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 
 	void Awake()
 	{
-		//if (loaderAnime == null)
-		//{
-		//	Debug.LogError("<Color=Red><b>Missing</b></Color> loaderAnime Reference.", this);
-		//}
 
 		// #Critical
 		// this makes sure we can use PhotonNetwork.LoadLevel() on the master client and all clients in the same room sync their level automatically
@@ -83,30 +79,17 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 	/// </summary>
 	public void Host()
 	{
-		// we want to make sure the log is clear everytime we connect, we might have several failed attempted if connection failed.
-		//feedbackText.text = "";
-
-		// keep track of the will to join a room, because when we come back from the game we will get a callback that we are connected, so we need to know what to do then
-		//isConnecting = true;
-
 		// Set player name
 		PhotonNetwork.NickName = playerNameTextbox.text.Length > 0 ? playerNameTextbox.text : "Player";
 
 		// hide the Play button for visual consistency
 		controlPanel.SetActive(false);
 
-		// start the loader animation for visual effect.
-		//if (loaderAnime != null)
-		//{
-		//	loaderAnime.StartLoaderAnimation();
-		//}
-		
 		// we check if we are connected or not, we join if we are , else we initiate the connection to the server.
 		if (PhotonNetwork.IsConnected)
 		{
 			Log("Creating room for " + gamemodeDD.captionText.text + "...");
 			// #Critical we need at this point to attempt joining a Random Room. If it fails, we'll get notified in OnJoinRandomFailed() and we'll create one.
-			//PhotonNetwork.JoinRandomRoom();
 			RoomOptions ro = new RoomOptions { MaxPlayers = this.maxPlayersPerRoom };
 			ro.CustomRoomProperties = new ExitGames.Client.Photon.Hashtable();
 			ro.CustomRoomProperties.Add("gamemode", gamemodeDD.captionText.text);
@@ -115,9 +98,7 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 		}
 		else
 		{
-
 			Log("Connecting...");
-
 			// #Critical, we must first and foremost connect to Photon Online Server.
 			PhotonNetwork.ConnectUsingSettings();
 			PhotonNetwork.GameVersion = this.gameVersion;
@@ -127,7 +108,6 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 
     public void Join()
     {
-		//isConnecting = true;
 		// Set player name
 		PhotonNetwork.NickName = playerNameTextbox.text.Length > 0 ? playerNameTextbox.text : "Player";
 
@@ -138,14 +118,11 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 		{
 			Log("Joining Room...");
 			// #Critical we need at this point to attempt joining a Random Room. If it fails, we'll get notified in OnJoinRandomFailed() and we'll create one.
-			//PhotonNetwork.JoinRandomRoom();
 			PhotonNetwork.JoinRoom(roomCodeTextbox.text);
 		}
 		else
 		{
-
 			Log("Connecting...");
-
 			// #Critical, we must first and foremost connect to Photon Online Server.
 			PhotonNetwork.ConnectUsingSettings();
 			PhotonNetwork.GameVersion = this.gameVersion;
@@ -158,18 +135,7 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
     /// </summary>
     public override void OnConnectedToMaster()
     {
-        // we don't want to do anything if we are not attempting to join a room. 
-        // this case where isConnecting is false is typically when you lost or quit the game, when this level is loaded, OnConnectedToMaster will be called, in that case
-        // we don't want to do anything.
-        //if (isConnecting)
-        //{
-            Log("Connected to primary server");
-            //Debug.Log("PUN Basics Tutorial/Launcher: OnConnectedToMaster() was called by PUN. Now this client is connected and could join a room.\n Calling: PhotonNetwork.JoinRandomRoom(); Operation will fail if no room found");
-
-        //    // #Critical: The first we try to do is to join a potential existing room. If there is, good, else, we'll be called back with OnJoinRandomFailed()
-        //    //PhotonNetwork.JoinRandomRoom();
-        //    PhotonNetwork.CreateRoom(null, new RoomOptions { MaxPlayers = this.maxPlayersPerRoom });
-        //}
+		Log("Connected to primary server");
     }
 
 
@@ -199,9 +165,7 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 		Log("Disconnected. " + cause.ToString());
 
 		// #Critical: we failed to connect or got disconnected. There is not much we can do. Typically, a UI system should be in place to let the user attemp to connect again.
-		//loaderAnime.StopLoaderAnimation();
 
-		//isConnecting = false;
 		controlPanel.SetActive(true);
 	}
 

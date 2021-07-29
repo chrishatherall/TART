@@ -7,7 +7,6 @@ public class UI_ShowPlayerDetails : MonoBehaviour
 {
     // The player we're showing values for.
     public Player targetPlayer;
-
     // The health value box
     public UnityEngine.UI.Text healthValue;
     // Current health image, which scales X with health value
@@ -23,7 +22,6 @@ public class UI_ShowPlayerDetails : MonoBehaviour
     public UnityEngine.UI.Text roleText;
     // Role background image
     public UnityEngine.UI.Image roleImage;
-
 
     // Gun parent element
     public GameObject gunParent;

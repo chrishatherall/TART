@@ -7,31 +7,24 @@ using static GameManager;
 
 public class Player : MonoBehaviourPunCallbacks, IPunObservable
 {
-    // TODO sync these values!
-
     // Role
     private TartRole _role;
-
-    // Unique ID provided by PhotonView.
-    public int id = 0;
 
     #region Sync'd variables
     // Oil is effectively hitpoints
     public int oil = 100;
     public int maxOil = 100;
     // Damage is how much oil is lost each tick
-    public int damage = 3;
+    public int damage = 0;
     // is the player dead
     public bool isDead = false;
     // Local player is loaded and ready to play a round
     public bool isReady = false;
-
+    // Name of this player
     public string nickname;
-    public int actorNumber; // The actor number provided by photon to networked players
+    // The unique actor number provided by photon to networked players (alias is ID)
+    public int actorNumber; 
     #endregion
-
-    // Setup flag
-    public bool isSetup = false;
 
     // Our held item, and script
     public GameObject heldItem;
@@ -66,67 +59,42 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         }
     }
 
-    public TartRole Role 
-    { 
-        get => _role; 
-    }
+    // Public access for the role
+    public TartRole Role { get => _role; }
+
+    // ID is a alias for actorNumber
+    public int ID { get => actorNumber; }
 
     void Start()
     {
-        if (isSetup)
-        {
-            gm.LogError("[Player] Already set up!");
-            return;
-        }
-
         // GM might not be ready yet.
         if (!gm)
         {
             gm.LogError("[Player] GM not ready!");
+            return;
         }
         // Announce self to GM.
         gm.Log("[Player] Started. Announcing to GameManager.");
         gm.AddPlayer(this);
-        // Grab our network ID
-        this.id = photonView.ViewID;
         // Set ourselves as default role
         this._role = gm.GetRoleFromID(0);
-        // Mark setup done.
-        isSetup = true;
 
         // Set as ready, and apply nickname when the local player has loaded
         if (photonView.IsMine)
         {
-            isReady = true;
             nickname = PhotonNetwork.LocalPlayer.NickName;
             actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
+            isReady = true;
         }
     }
 
     [PunRPC]
     public void SetRoleById(int id)
     {
-        if (!isSetup)
-        {
-            gm.LogError("[Player] Cannot set role, not set up!");
-            return;
-        }
         _role = gm.GetRoleFromID(id);
-        if (photonView.IsMine) gm.Alert("Role is now " + _role.Name + "!");
+        // Create an alert for the local player
+        if (photonView.IsMine) gm.Alert($"Role is now {_role.Name}!");
     }
-
-    // Role is set via rpc instead of syncvar because we can't easily sync a class
-    //[PunRPC]
-    //void RpcSetRoleById (int id)
-    //{
-    //    if (!isSetup)
-    //    {
-    //        Debug.LogError("[Player] Cannot set role, not set up!");
-    //        return;
-    //    }
-    //    _role = GM.GetRoleFromID(id);
-    //    if (photonView.IsMine) GM.Alert("Role is now " + _role.Name + "!");
-    //}
 
     [PunRPC]
     public void Reset()
@@ -138,6 +106,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         this._role = gm.GetRoleFromID(0);
     }
 
+    [PunRPC]
     public void TakeDamage(int dmg)
     {
         if (isDead) return;
@@ -152,6 +121,8 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         }
     }
 
+    // Ticks happen once a second. Why though? Is it so we reduce network sync traffic?
+    // It would be cleaner to ignore this and round values for the UI.
     private float msSinceLastTick = 0;
     public void Update()
     {

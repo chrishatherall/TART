@@ -26,7 +26,7 @@ public class UI_commandWindow : MonoBehaviourPun
         "PUMPO"
     };
 
-    // The command window label we should enable/disable on `
+    // The command window label we should enable/disable on ` or ESC
     [SerializeField]
     GameObject commandWindowObject;
     // The textbox where commands are entered.
@@ -37,7 +37,7 @@ public class UI_commandWindow : MonoBehaviourPun
     Text logText;
 
     // Called when someone finishes entering text in the command field
-    // TODO not just called when hitting enter. Sometimes when hitting ` or maybe even clicking off?
+    // Not just called when hitting enter. Sometimes when hitting ` or maybe even clicking off?
     public void CommandEntered()
     {
         // This method is called when we close the command window with `. This means a half-entered
@@ -110,8 +110,8 @@ public class UI_commandWindow : MonoBehaviourPun
 
             case "ROUNDRESTART":
                 // Set round to postround
-                gm.gameState = GameState.PostRound;
-                // Set roundovertime to something smaller than maxroundovertime
+                gm.CurrentGameState = GameState.PostRound;
+                // Set roundovertime to something smaller than maxroundovertime to make the postround quick
                 gm.curPostRoundTime = gm.postRoundTime - 1;
                 // This should initiate the postround cleanup, give it time, then start the preround spawning
                 // TODO somehow force a draw with no points
@@ -160,7 +160,7 @@ public class UI_commandWindow : MonoBehaviourPun
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.BackQuote))
+        if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Escape))
         {
             commandWindowObject.SetActive(!commandWindowObject.activeSelf);
             if (commandWindowObject.activeSelf)

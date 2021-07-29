@@ -15,38 +15,30 @@ public class Activatable : MonoBehaviourPun
     // Friendly name used in UI components
     public string nickname;
 
+    // Temporary way of locking doors, will be removed in the future
     public string requiredKey;
-
-    // TODO add SyncVar values for when the activatable is "ready" and it's state
-    // eg, buttons can be on/off or just push, levers are the same. They could also be one-use
-    // These values would change the UI text overlay or disable the highlight entirely
-
 
     public void Start()
     {
         // Our controllable should be ourselves if nothing is defined.
         if (!targetControllable) targetControllable = this.gameObject;
+        this.gameObject.AddComponent<PhotonView>();
     }
 
     [PunRPC]
-    public void Activate(Vector3 position)
+    public void ActivateOnServer(Vector3 position, PhotonMessageInfo info)
     {
-        // TODO might want to do a beep or something here.
-
-        // Actual activation (like doing STUFF) should only happen on the server.
-        if (PhotonNetwork.IsConnected && !PhotonNetwork.IsMasterClient) return;
-
-        // TODO check things like enabled/disabled, X role only, cooldown, bool on/off like levers, etc
         // Tell other scripts on this object to activate
         gm.Log("Activated " + nickname);
-        // TODO how does this work with rpc? Maybe let controllables handle that?
-        if (targetControllable != null)
-        {
-            targetControllable.SendMessage("OnActivated", position);
-        }
-        else
-        {
-            gameObject.SendMessage("OnActivated", position);
-        }
+        targetControllable.SendMessage("OnActivated", position);
+    }
+
+    // Called locally when a player activates this object
+    public void Activate(Vector3 position)
+    {
+        // TODO check things like enabled/disabled, X role only, cooldown, bool on/off like levers, etc
+
+        // This sends the activate to the server only, which could be a bit laggy for us and other clients
+        this.photonView.RPC("Activate", RpcTarget.MasterClient, position);
     }
 }

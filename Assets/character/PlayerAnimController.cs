@@ -4,29 +4,29 @@ using System.Collections.Generic;
 using UnityEngine;
 using static GameManager;
 
-// Pulls movement details from the fps_controller, syncs those values to the network, and passes them to the animator
+// Pulls movement details from the FpsController, syncs those values to the network, and passes them to the animator
 
-public class player_anim_controller : MonoBehaviourPun, IPunObservable
+public class PlayerAnimController : MonoBehaviourPun, IPunObservable
 {
     // Animation parameters
     float frontBackMovement; // 1 = full forwards, -1 = full backwards
     float leftRightMovement; // 1 = full right, -1 = full left
     bool isMoving;           // false if idle, true if moving
     bool isGrounded;         // true if on floor
-
-    // Component refs
-    fps_controller fpsController;
+    
+    // Component references
+    FpsController fpsController;
     Animator animator;
-
 
     public void Start()
     {
-        fpsController = GetComponent<fps_controller>();
+        fpsController = GetComponent<FpsController>();
         animator = GetComponent<Animator>();
 
         if (!fpsController || !animator)
         {
-            gm.LogError("player_anim_controler could not find required components");
+            // Turn this component off if we can't find the required components
+            gm.LogError("PlayerAnimController could not find required components");
             this.enabled = false;
         }
     }
@@ -36,16 +36,13 @@ public class player_anim_controller : MonoBehaviourPun, IPunObservable
     {
         if (photonView.IsMine)
         {
-            // TODO pull some details like isDead from player
-
-            // Pull details from the fps_controller
+            // Pull details from the FpsController
             frontBackMovement = fpsController.frontBackMovement;
             leftRightMovement = fpsController.leftRightMovement;
             isMoving = fpsController.isMoving;
             isGrounded = fpsController.isGrounded;
 
-
-            // TODO remove this immediately it is filthy
+            // TODO this should be pulled from the FpsController instead of directly
             if (Input.GetKeyDown("space"))
             {
                 animator.SetTrigger("triggerJumped");
@@ -61,6 +58,7 @@ public class player_anim_controller : MonoBehaviourPun, IPunObservable
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
+        // TODO not syncing jump
         if (stream.IsWriting)
         {
             // We own this player: send the others our data
