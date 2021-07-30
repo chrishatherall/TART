@@ -128,6 +128,8 @@ public class FpsController : MonoBehaviourPun
     // Update is called once per frame
     void Update()
     {
+        if (player.isDead) return; // Don't do anything if we're dead. Introduces a bug when dying in midair, but whatever
+
         #region Camera
         // Control camera movement
         yaw = transform.localEulerAngles.y + Input.GetAxis("Mouse X") * mouseSensitivity;
@@ -338,11 +340,18 @@ public class FpsController : MonoBehaviourPun
         newItem.GetPhotonView().RPC("Setup", RpcTarget.Others, player.ID);
     }
 
-
-    // Drops our held item into the world
-    void TryDropHeldItem ()
+    public void Reset()
     {
-        if (player.isDead || !player.heldItem) return;
+        // Turn off the character controller before force-moving, or it'll just set us right back.
+        this.charCon.enabled = false;
+        this.transform.position = gm.GetPlayerSpawnLocation();
+        this.charCon.enabled = true;
+    }
+
+    // Drops our held item into the world. Called when we press G or on death
+    public void TryDropHeldItem ()
+    {
+        if (!player.heldItem) return;
         TryDropItem(player.heldItemScript.worldPrefab.name);
         // Destroy the item in our hands.
         PhotonNetwork.Destroy(player.heldItem);
@@ -351,7 +360,6 @@ public class FpsController : MonoBehaviourPun
     // Drops an item into the world
     void TryDropItem (string prefabName)
     {
-        if (player.isDead) return;
         // Tell server we're dropping our held item.
         photonView.RPC("RpcDropItem", RpcTarget.MasterClient, player.heldItemScript.worldPrefab.name);
     }

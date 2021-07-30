@@ -200,11 +200,6 @@ public class Gun : MonoBehaviourPun
     // Update is called once per frame
     void Update()
     {
-        // Move our gun when fired. Doesn't affect aim, just visual.
-        float lerpAmount = timeUntilNextShot / timeBetweenShots;
-        this.transform.localPosition = Vector3.Lerp(minRecoilPosition, maxRecoilPosition, lerpAmount);
-        // Also needs to rotate along with recoil
-        this.transform.localRotation = Quaternion.Euler(-currentRecoil, 0f, 0f);
 
         if (isReloading)
         {
@@ -216,6 +211,13 @@ public class Gun : MonoBehaviourPun
                 // We have finished a reload
                 FinishReload();
             }
+        } else
+        {
+            // Move our gun when fired. Doesn't affect aim, just visual.
+            float lerpAmount = timeUntilNextShot / timeBetweenShots;
+            modelAnchor.transform.localPosition = Vector3.Lerp(minRecoilPosition, maxRecoilPosition, lerpAmount);
+            // Also needs to rotate along with recoil
+            modelAnchor.transform.localRotation = Quaternion.Euler(-currentRecoil, 0f, 0f);
         }
 
         // Reduce recoil

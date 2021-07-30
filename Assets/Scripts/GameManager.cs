@@ -82,6 +82,9 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     // List of gameobjects with spawnitems, needs to be set manually
     public List<GameObject> spawnTables;
 
+    // The screen that shows when we die, giving us a respawn button in Deathmatch mode.
+    public GameObject DeadScreen;
+
     public GameState CurrentGameState { 
         get => _curGameState; 
         set {
@@ -140,20 +143,13 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         Log("[GM] Started. State is " + CurrentGameState);
 
         ui.SetActive(true);
+
+        PhotonNetwork.AddCallbackTarget(this);
     }
 
     public void Start()
     {
-        // TEMP. Makes a player prefab for us. Doesn't check for rounds in progress
-        if (playerPrefab == null)
-        {
-            LogError("[GM] Missing playerPrefab Reference.");
-        }
-        else
-        {
-            // Spawn a character for the local player
-            PhotonNetwork.Instantiate(this.playerPrefab.name, GetPlayerSpawnLocation(), Quaternion.identity, 0);
-        }
+        SpawnMe();
 
         // Tell all scene spawn points to spawn their items
         SpawnSceneItems();
@@ -341,6 +337,30 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         players.Add(player);
     }
 
+    // Spawns a player prefab for the player calling this
+    public void SpawnMe()
+    {
+        // TEMP. Makes a player prefab for us. Doesn't check for rounds in progress
+        if (playerPrefab == null)
+        {
+            LogError("[GM] Missing playerPrefab Reference.");
+            return;
+        }
+
+        // If this player has an active script, just respawn that prefab
+        Player existingPlayer = GetPlayerByActorNumber(PhotonNetwork.LocalPlayer.ActorNumber);
+        if (existingPlayer)
+        {
+            // Reset components on player.
+            existingPlayer.SendMessage("Reset");
+        }
+        else
+        {
+            // Spawn a character for the local player
+            PhotonNetwork.Instantiate(this.playerPrefab.name, GetPlayerSpawnLocation(), Quaternion.identity, 0);
+        }
+    }
+
     // This is kinda a temp thing to make sure our player goes back to the main menu when disconnected
     public override void OnLeftRoom()
     {
@@ -364,6 +384,11 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     {
         int eventCode = photonEvent.Code;
         Log($"[GM] Received Photon event code " + eventCode);
+
+        //if (eventCode == (int)Events.PlayerDied)
+        //{
+            
+        //}
     }
 
     // Called by a client when destroying an item (eg, picking it up from the ground)

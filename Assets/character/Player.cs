@@ -149,8 +149,20 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     // Called when something causes our death
     public void Die()
     {
+        // We don't need to do anything more if this isn't our player
+        if (!this.photonView.IsMine) return;
+
         isDead = true;
-        gm.Alert("DEAD");
+
+        // TODO this might be better hooking into an event to increase modularity
+        // Try to drop our held item
+        FpsController fpsc = GetComponent<FpsController>();
+        if (fpsc) fpsc.TryDropHeldItem();
+
+        // Turn on the dead screen
+        gm.DeadScreen.SetActive(true);
+        // Activate mouse
+        Cursor.lockState = CursorLockMode.None;
     }
 
 }
