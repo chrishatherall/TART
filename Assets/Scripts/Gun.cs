@@ -5,6 +5,9 @@ using Photon.Pun;
 using static GameManager;
 
 // TODO recoil/firing inaccuracy
+// TODO amend particle system to aim at our bullet vector
+// TODO ideally modify PS to have a max distance so it runs out at our hit point. Not sure it's worth, 
+//   but avoid using collision, and fixes bug where particle hits a corner a bullet doesn't.
 
 public class Gun : MonoBehaviourPun
 {
@@ -37,7 +40,7 @@ public class Gun : MonoBehaviourPun
     public Vector3 recoilAxis;
     // Decal prefab
     public GameObject decalPrefab;
-    // Current recoil (on the x axis for now)
+    // Current recoil
     public float currentRecoil = 0f; // Degrees
     // Max recoil
     public float maxRecoil = 40f; // Degrees
@@ -91,22 +94,22 @@ public class Gun : MonoBehaviourPun
 
     // Called by the shooter on all other clients
     [PunRPC]
-    public void RpcDoSoundAndVisuals(bool localOverride, Vector3 origin, Vector3 forward)
+    public void RpcDoSoundAndVisuals(Vector3 origin, Vector3 direction)
     {
-        // Don't do this if we are the owner. This method will have already been called locally to avoid lag.
-        if (photonView && photonView.IsMine && !localOverride) return;
-
         // Play shoot sound
         shotSound.Play();
 
         // Play one emission of our particle emitter
-        if (ps) ps.Play();
-
-        // Declare a raycast hit to store information about what our raycast has hit
-        RaycastHit hit;
-        // Check if our raycast has hit anything
-        if (Physics.Raycast(origin, forward, out hit, range))
+        if (ps)
         {
+            ps.gameObject.transform.rotation.SetLookRotation(direction); // This works but I don't know how
+            ps.Play();
+        }
+
+        // Check if our raycast has hit anything
+        if (Physics.Raycast(origin, direction, out RaycastHit hit, range)) // TODO for other people this will likely hit our player all the time
+        {
+            ps.gameObject.transform.LookAt(hit.point);
             // TODO pool objects
             //Spawn the decal object just above the surface the raycast hit
             GameObject decalObject = Instantiate(decalPrefab, hit.point + (hit.normal * 0.025f), Quaternion.FromToRotation(decalPrefab.transform.up, hit.normal)) as GameObject;
@@ -131,15 +134,20 @@ public class Gun : MonoBehaviourPun
             return;
         }
 
-        // Tell ourselves to do the visuals immediately to avoid lag
-        RpcDoSoundAndVisuals(true, aimOrigin, cam.transform.forward);
-        // Tell clients to do audio/visual stuff
-        photonView.RPC("RpcDoSoundAndVisuals", RpcTarget.Others, false, aimOrigin, cam.transform.forward);
+        // Determine bullet direction
+        //Vector3 bulletDirection = cam.transform.forward;
+        // Add weapon inaccuracy. Recoil goes up in a V
+        Vector3 bulletDirection = cam.transform.forward +
+            Quaternion.AngleAxis(currentRecoil, cam.transform.up).ToEuler() +
+            Quaternion.AngleAxis(Random.Range(-50f, 51f)/100f * currentRecoil, cam.transform.right).ToEuler();
 
-        // Declare a raycast hit to store information about what our raycast has hit
-        RaycastHit hit;
+        // Tell ourselves to do the visuals immediately to avoid lag
+        RpcDoSoundAndVisuals(aimOrigin, bulletDirection);
+        // Tell clients to do audio/visual stuff
+        photonView.RPC("RpcDoSoundAndVisuals", RpcTarget.Others, aimOrigin, bulletDirection);
+
         // Check if our raycast has hit anything
-        if (Physics.Raycast(aimOrigin, cam.transform.forward, out hit, range))
+        if (Physics.Raycast(aimOrigin, bulletDirection, out RaycastHit hit, range, ~(1 << 7))) // TODO move layermask declaration
         {
             // Tell the object we hit to take damage
             // TODO needs to be RPCd
@@ -154,13 +162,16 @@ public class Gun : MonoBehaviourPun
             }
         }
 
+        // Add recoil to gun
+        currentRecoil += recoilPerShot;
+
         // Add recoil to camera/character
         if (fpsController)
         {
             fpsController.CameraWiggle = recoilPerShot;
         } else
         {
-            gm.LogError("[Gun] Cannot find fps_controller to add camera wiggle");
+            gm.LogError("[Gun] Cannot find FpsController to add camera wiggle");
         }
     }
 
@@ -192,6 +203,8 @@ public class Gun : MonoBehaviourPun
         // Move our gun when fired. Doesn't affect aim, just visual.
         float lerpAmount = timeUntilNextShot / timeBetweenShots;
         this.transform.localPosition = Vector3.Lerp(minRecoilPosition, maxRecoilPosition, lerpAmount);
+        // Also needs to rotate along with recoil
+        this.transform.localRotation = Quaternion.Euler(-currentRecoil, 0f, 0f);
 
         if (isReloading)
         {
