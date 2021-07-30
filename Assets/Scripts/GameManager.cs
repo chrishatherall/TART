@@ -7,6 +7,7 @@ using UnityEngine.SceneManagement;
 using Photon.Realtime;
 using ExitGames.Client.Photon;
 using System.Linq;
+using UnityEngine.UI;
 
 // Delegate signature for alert events
 public delegate void Alert(string message);
@@ -84,6 +85,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
 
     // The screen that shows when we die, giving us a respawn button in Deathmatch mode.
     public GameObject DeadScreen;
+    public Text DeathDetailsText;
 
     public GameState CurrentGameState { 
         get => _curGameState; 

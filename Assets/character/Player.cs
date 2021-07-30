@@ -147,9 +147,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     }
 
     // Called when something causes our death
-    public void Die()
+    public void Die(string source = "Unknown", string method = "Unknown")
     {
-        // We don't need to do anything more if this isn't our player
+        // We don't need to do anything if this isn't our player
         if (!this.photonView.IsMine) return;
 
         isDead = true;
@@ -161,6 +161,8 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
         // Turn on the dead screen
         gm.DeadScreen.SetActive(true);
+        // Set dead screen message
+        gm.DeathDetailsText.text = $"Killed by {source} with {method}";
         // Activate mouse
         Cursor.lockState = CursorLockMode.None;
     }
