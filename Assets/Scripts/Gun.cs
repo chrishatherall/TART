@@ -65,8 +65,9 @@ public class Gun : MonoBehaviourPun
     // Ref to the model anchor transform, which is rotated in some situations (eg, mac10 held sideways)
     [SerializeField]
     GameObject modelAnchor;
-    // Does gun support being held sideways? 
-    public bool supportsSideways = true;
+    // Ref to the particle emitter
+    [SerializeField]
+    ParticleSystem ps;
 
     [PunRPC]
     public void Setup(int playerId)
@@ -85,6 +86,7 @@ public class Gun : MonoBehaviourPun
 
         fpsController = GetComponentInParent<FpsController>();
         cam = fpsController.playerCamera;
+
     }
 
     // Called by the shooter on all other clients
@@ -96,6 +98,9 @@ public class Gun : MonoBehaviourPun
 
         // Play shoot sound
         shotSound.Play();
+
+        // Play one emission of our particle emitter
+        if (ps) ps.Play();
 
         // Declare a raycast hit to store information about what our raycast has hit
         RaycastHit hit;
@@ -113,9 +118,6 @@ public class Gun : MonoBehaviourPun
     // Attempt to shoot, called when left-clicking
     void Shoot()
     {
-        // Only do this for the local player (seems to never work)
-        //if (!isLocalPlayer) return;
-
         // Add time between shots
         timeUntilNextShot += timeBetweenShots;
 

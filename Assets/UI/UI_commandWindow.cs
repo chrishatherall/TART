@@ -96,7 +96,7 @@ public class UI_commandWindow : MonoBehaviourPun
                 // Check the item we want to spawn is legit
                 if (spawnableItems.Contains(split[1]))
                 {
-                    p.gameObject.GetPhotonView().RPC("RpcDropItem", RpcTarget.MasterClient, split[1], false);
+                    p.gameObject.GetPhotonView().RPC("RpcDropItem", RpcTarget.MasterClient, split[1]);
                 } else
                 {
                     gm.Log($"[COMMAND] Invalid SPAWN value: {split[1]}.");
