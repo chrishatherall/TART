@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
-public class RotatingDoor : MonoBehaviour
+public class RotatingDoor : MonoBehaviourPun, IPunObservable
 {
     public enum DoorState
     {
@@ -117,9 +118,19 @@ public class RotatingDoor : MonoBehaviour
 
     void OnActivated(Vector3 position)
     {
+        // Tell all clients we activated this
+        photonView.RPC("ActivateDoor", RpcTarget.All, position);
+    }
+
+    // Called by client on all connected clients
+    [PunRPC]
+    public void ActivateDoor(Vector3 position)
+    {
         // Play activate audio
         if (audioSource) audioSource.Play();
 
+        // Control door logic only if we're the server
+        if (!photonView.IsMine) return;
         if (state == DoorState.Closed || state == DoorState.Closing)
         {
             state = DoorState.Opening;
@@ -129,7 +140,7 @@ public class RotatingDoor : MonoBehaviour
                 // Position is the WORLD position and we want the local one
                 Vector3 localPos = transform.InverseTransformPoint(position);
                 rotateDirection = (localPos.z > 0) ? 1 : -1; // TODO only works with vertical hinge?
-            } 
+            }
             else
             {
                 // If the door only opens one way, the direction is always positive
@@ -143,6 +154,22 @@ public class RotatingDoor : MonoBehaviour
             state = DoorState.Closing;
             rotateDirection = (CurrentAngle() < 180f) ? -1 : 1;
             return;
+        }
+    }
+
+    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    {
+        if (stream.IsWriting)
+        {
+            stream.SendNext(state);
+            stream.SendNext(rotateDirection);
+            stream.SendNext(this.transform.rotation);
+        }
+        else
+        {
+            this.state = (DoorState)stream.ReceiveNext();
+            this.rotateDirection = (int)stream.ReceiveNext();
+            this.transform.rotation = (Quaternion)stream.ReceiveNext();
         }
     }
 }

@@ -4,9 +4,12 @@ using UnityEngine;
 using Photon.Pun;
 using tart;
 using static GameManager;
+using static LogManager;
 
 public class Player : MonoBehaviourPunCallbacks, IPunObservable
 {
+    readonly string logSrc = "Player";
+
     // Role
     private TartRole _role;
 
@@ -70,11 +73,11 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         // GM might not be ready yet.
         if (!gm)
         {
-            gm.LogError("[Player] GM not ready!");
+            lm.LogError(logSrc,"GM not ready!");
             return;
         }
         // Announce self to GM.
-        gm.Log("[Player] Started. Announcing to GameManager.");
+        lm.Log(logSrc,"Started. Announcing to GameManager.");
         gm.AddPlayer(this);
         // Set ourselves as default role
         this._role = gm.GetRoleFromID(0);
@@ -149,7 +152,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     // Called when something causes our death
     public void Die(string source = "Unknown", string method = "Unknown")
     {
-        // We don't need to do anything if this isn't our player
+        lm.Log(logSrc, $"{nickname} died.");
+
+        // We don't need to do anything else if this isn't our player
         if (!this.photonView.IsMine) return;
 
         isDead = true;

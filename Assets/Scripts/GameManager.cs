@@ -8,14 +8,14 @@ using Photon.Realtime;
 using ExitGames.Client.Photon;
 using System.Linq;
 using UnityEngine.UI;
+using static LogManager;
 
 // Delegate signature for alert events
 public delegate void Alert(string message);
-// Delegate for log messages with error flag
-public delegate void LogEntry(string message, bool error);
 
 public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCallback
 {
+    readonly string logSrc = "GM";
     // Enum for the different game states
     public enum GameState
     {
@@ -40,8 +40,6 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
 
     // Game-level alerts
     public event Alert OnGameAlert;
-    // Log events
-    public event LogEntry OnLog;
 
     // Ref to the ui we need to enable after loading
     public GameObject ui;
@@ -83,6 +81,9 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     // List of gameobjects with spawnitems, needs to be set manually
     public List<GameObject> spawnTables;
 
+    // TODO these should be on some kind of player manager, which also hosts anything related to a specific player (death screen, spectator mode prefab, player ui, etc)
+    // Basically this GM should only care about the game itself
+
     // The screen that shows when we die, giving us a respawn button in Deathmatch mode.
     public GameObject DeadScreen;
     public Text DeathDetailsText;
@@ -92,7 +93,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         set {
             previousGameState = _curGameState;
             _curGameState = value;
-            GameStateChanged(previousGameState, _curGameState);
+            if (previousGameState != _curGameState) GameStateChanged(previousGameState, _curGameState);
         }
     }
 
@@ -113,15 +114,6 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         }
     }
 
-    public void LogError(string msg)
-    {
-        OnLog.Invoke(msg, true);
-    }    
-    public void Log(string msg)
-    {
-        OnLog.Invoke(msg, false);
-    }
-
     void Awake()
     {
         // Add reference to ourself to the static GameManager
@@ -139,10 +131,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         // Find all player spawn points
         playerSpawnLocations = FindObjectsOfType<PlayerSpawn>();
 
-        // This is an empty function so onlog can invoke SOMETHING. It errors otherwise.
-        OnLog += (m,b) => { };
-
-        Log("[GM] Started. State is " + CurrentGameState);
+        lm.Log(logSrc,"Started. State is " + CurrentGameState);
 
         ui.SetActive(true);
 
@@ -201,14 +190,14 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
                 // Traitor win.
                 if (lInnocents == 0)
                 {
-                    Debug.Log("[GM] Traitors win!");
+                    lm.Log(logSrc,"Traitors win!");
                     CurrentGameState = GameState.PostRound;
                     RaiseEvent(Events.TraitorWin);
 
                 }
                 // Innocent win.
                 if (lTraitors == 0) {
-                    Debug.Log("[GM] Innocents win!");
+                    lm.Log(logSrc,"Innocents win!");
                     CurrentGameState = GameState.PostRound;
                     RaiseEvent(Events.InnocentWin);
                 }
@@ -235,12 +224,12 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     // Called when the game state changes
     void GameStateChanged(GameState oldState, GameState newState)
     {
-        Alert("[GM] Game state changed from " + oldState + " to " + newState);
+        Alert("Game state changed from " + oldState + " to " + newState);
 
         #region PreRound
         if (newState == GameState.PreRound)
         {
-            Log("[GM] Preround starting!");
+            lm.Log(logSrc,"Preround starting!");
 
             roundChange.clip = preRound;
             roundChange.Play();
@@ -257,7 +246,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         #region Round start
         if (newState == GameState.Active)
         {
-            Log("[GM] Round started!");
+            lm.Log(logSrc,"Round started!");
 
             if (PhotonNetwork.IsMasterClient)
             {
@@ -286,7 +275,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         #region Postround
         if (newState == GameState.PostRound)
         {
-            Log("[GM] Round over!");
+            lm.Log(logSrc,"Round over!");
             roundChange.clip = roundOver;
             roundChange.Play();
 
@@ -302,7 +291,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         // spawns. We don't want people spawning inside each other.
         if (playerSpawnLocations.Length == 0)
         {
-            LogError("[GM] Couldnt get player spawn, list is empty.");
+            lm.LogError(logSrc, "Couldnt get player spawn, list is empty.");
             return Vector3.zero;
         }
         int index = Random.Range(0, playerSpawnLocations.Length);
@@ -333,7 +322,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     {
         if (GetPlayerByID(player.ID))
         {
-            LogError("[GM] Tried to add player that already exists!");
+            lm.LogError(logSrc,"Tried to add player that already exists!");
             return;
         }
         players.Add(player);
@@ -345,7 +334,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         // TEMP. Makes a player prefab for us. Doesn't check for rounds in progress
         if (playerPrefab == null)
         {
-            LogError("[GM] Missing playerPrefab Reference.");
+            lm.LogError(logSrc, "Missing playerPrefab Reference.");
             return;
         }
 
@@ -385,12 +374,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     public void OnEvent(EventData photonEvent)
     {
         int eventCode = photonEvent.Code;
-        Log($"[GM] Received Photon event code " + eventCode);
-
-        //if (eventCode == (int)Events.PlayerDied)
-        //{
-            
-        //}
+        lm.Log(logSrc,$"Received Photon event code " + eventCode);
     }
 
     // Called by a client when destroying an item (eg, picking it up from the ground)
@@ -434,7 +418,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         GameObject spawnTable = spawnTables.Find(st => st.name == listName);
         if (!spawnTable)
         {
-            Log($"[GM] Cannot find spawn table: '{listName}'.");
+            lm.Log(logSrc,$"Cannot find spawn table: '{listName}'.");
             return null;
         }
         // Get all spawnable items under this spawn table.
@@ -442,7 +426,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         // Check that the list isn't empty.
         if (spawnItems.Length == 0)
         {
-            Log($"[GM] Spawn table '{listName}' is empty.");
+            lm.Log(logSrc,$"Spawn table '{listName}' is empty.");
             return null;
         }
         // Return a random item from the list. TODO this ignores weighting

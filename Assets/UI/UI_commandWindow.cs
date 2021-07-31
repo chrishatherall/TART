@@ -5,9 +5,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using static GameManager;
+using static LogManager;
 
 public class UI_commandWindow : MonoBehaviourPun
 {
+    readonly string logSrc = "UI_CW";
+
     string[] allCommands;     // Concat if client+server commands
     string[] clientCommands = // Commands which can be run by all players
     {
@@ -55,7 +58,7 @@ public class UI_commandWindow : MonoBehaviourPun
         string command = commandInput.text.ToUpper().Split(' ')[0];
         if (!allCommands.Contains(command))
         {
-            gm.Log($"[COMMAND] Unknown command: {command}.");
+            lm.Log(logSrc, $"Unknown command: {command}.");
             return;
         }
         // Send command to server
@@ -69,7 +72,7 @@ public class UI_commandWindow : MonoBehaviourPun
     public void HandleCommand (string command, PhotonMessageInfo pmi)
     {
         if (!PhotonNetwork.IsMasterClient) return;
-        gm.Log($"[COMMAND] {pmi.Sender.ActorNumber}:{pmi.Sender.NickName} entered [{commandInput.text}].");
+        lm.Log(logSrc,$"{pmi.Sender.ActorNumber}:{pmi.Sender.NickName} entered [{commandInput.text}].");
 
         // Ensure all commands are in uppercase
         string[] split = command.ToUpper().Split(' ');
@@ -77,7 +80,7 @@ public class UI_commandWindow : MonoBehaviourPun
         // If the command is a server command, check it's from the master client
         if (serverCommands.Contains(split[0]) && !pmi.Sender.IsMasterClient)
         {
-            gm.Log($"[COMMAND] Ignoring command [{commandInput.text}]. Not server.");
+            lm.Log(logSrc, $"Ignoring command [{commandInput.text}]. Not server.");
             return;
         }
 
@@ -85,7 +88,7 @@ public class UI_commandWindow : MonoBehaviourPun
         Player p = gm.GetPlayerByActorNumber(pmi.Sender.ActorNumber);
         if (!p)
         {
-            gm.LogError($"[COMMAND] Couldnt find player {pmi.Sender.ActorNumber}.");
+            lm.LogError(logSrc, $"Couldnt find player {pmi.Sender.ActorNumber}.");
             return;
         }
 
@@ -99,7 +102,7 @@ public class UI_commandWindow : MonoBehaviourPun
                     p.gameObject.GetPhotonView().RPC("RpcDropItem", RpcTarget.MasterClient, split[1]);
                 } else
                 {
-                    gm.Log($"[COMMAND] Invalid SPAWN value: {split[1]}.");
+                    lm.Log(logSrc, $"Invalid SPAWN value: {split[1]}.");
                 }
                 break;
 
@@ -118,7 +121,7 @@ public class UI_commandWindow : MonoBehaviourPun
                 break;
 
             default:
-                gm.Log($"[COMMAND] Invalid command: {split[0]}.");
+                lm.Log(logSrc, $"Invalid command: {split[0]}.");
                 break;
         }
     }
@@ -130,35 +133,27 @@ public class UI_commandWindow : MonoBehaviourPun
         // TODO scroll down automatically
     }
 
-    public void HandleUnityLog(string logString, string stack, LogType type)
-    {
-        logText.text += "\n[UNITY] [" + type.ToString() + "] " + logString;
-        if (type == LogType.Exception)
-        {
-            logText.text += "\n" + stack;
-        }
-    }
-
     // Start is called before the first frame update
     void Start()
     {
         if (!commandWindowObject || !commandInput || !logText)
         {
-            Debug.LogError("UI_commandWindow is missing references");
+            lm.LogError(logSrc, "Missing references");
             this.enabled = false;
             return;
         }
 
+        // Populate our log with past logs
+        logText.text = lm.GetFullLog();
+
         // Add hook to logs on the GameManager
-        gm.OnLog += HandleLog;
-        // Add hook for unity logs
-        Application.logMessageReceived += HandleUnityLog;
+        lm.OnLog += HandleLog;
 
         // Build list of all commands
         allCommands = clientCommands.Concat(serverCommands).ToArray();
     }
 
-    private void Update()
+    void Update()
     {
         if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.Escape))
         {

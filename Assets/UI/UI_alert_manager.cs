@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 using static GameManager;
+using static LogManager;
 
 public class UI_alert_manager : MonoBehaviour
 {
+    readonly string logSrc = "UI_AM";
     // Alert message prefab. Spawned when an alert is made
     public GameObject AlertPrefab;
 
@@ -16,7 +18,7 @@ public class UI_alert_manager : MonoBehaviour
         // Listen for game-level alerts
         if (!gm)
         {
-            Debug.LogError("[UI_alert_manager] Could not find GM");
+            lm.LogError(logSrc, "Could not find GM");
             this.enabled = false;
             return;
         }
@@ -27,7 +29,7 @@ public class UI_alert_manager : MonoBehaviour
     {
         if (!AlertPrefab)
         {
-            gm.LogError("[UI_alert_manager] Missing AlertPrefab!");
+            lm.LogError(logSrc,"Missing AlertPrefab!");
             return;
         }
 
@@ -43,6 +45,6 @@ public class UI_alert_manager : MonoBehaviour
         // Set details
         alert.GetComponent<UI_alert>().SetMessage(msg);
 
-        gm.Log("[UI_alert] Added alert: " + msg);
+        lm.Log(logSrc,"Added alert: " + msg);
     }
 }

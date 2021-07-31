@@ -4,9 +4,12 @@ using UnityEngine;
 using UnityEngine.UI;
 using Photon.Pun;
 using static GameManager;
+using static LogManager;
 
 public class UI_devOverlay : MonoBehaviour
 {
+    readonly string logSrc = "UI_DEV";
+
     public GameObject ui_container;
 
     private Text text;
@@ -17,7 +20,7 @@ public class UI_devOverlay : MonoBehaviour
         DontDestroyOnLoad(this);
         if (!ui_container)
         {
-            gm.LogError("[UI_devOverlay] No ui_container selected.");
+            lm.LogError(logSrc,"No ui_container selected.");
             this.gameObject.SetActive(false);
             return;
         }

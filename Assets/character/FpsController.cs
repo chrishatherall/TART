@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
 using static GameManager;
+using static LogManager;
 
 // TODO in an ideal world this controller would be based on a rigidbody to allow more detailed movement
 // as the basic CharacterController can't handle acceleration changes, and won't be affected by
@@ -10,6 +11,7 @@ using static GameManager;
 
 public class FpsController : MonoBehaviourPun
 {
+    readonly string logSrc = "FPS_CTRL";
 
     #region Camera Movement Variables
     // Ref to camera component
@@ -115,7 +117,7 @@ public class FpsController : MonoBehaviourPun
 
         if (!player || !charCon || !inventory)
         {
-            gm.LogError("[FpsController] Missing components!");
+            lm.LogError(logSrc,"Missing components!");
         }
 
         // Turn off the cursor
@@ -307,10 +309,10 @@ public class FpsController : MonoBehaviourPun
 
         if (!item || !PV || !pickup)
         {
-            gm.LogError($"[FpsController] player {player.ID} tried to pick up missing item");
+            lm.LogError(logSrc,$"player {player.ID} tried to pick up missing item");
             return;
         }
-        gm.Log($"[FpsController] player {player.ID} is picking up {item.GetComponent<Pickup>().nickname}");
+        lm.Log(logSrc,$"player {player.ID} is picking up {pickup.nickname}");
 
         // Play sound if the pickup has one
         if (pickup.pickupSound)
@@ -336,6 +338,7 @@ public class FpsController : MonoBehaviourPun
 
         // Setup the gun and tell other players to
         // TODO assumes it's a gun
+        // TODO items with an audio source should be set to 2d spatial blend so the sound doesn't favour one speaker (annoying)
         newItem.GetComponent<Gun>().Setup(player.ID);
         newItem.GetPhotonView().RPC("Setup", RpcTarget.Others, player.ID);
     }
@@ -368,7 +371,7 @@ public class FpsController : MonoBehaviourPun
     void RpcDropItem (string prefabName)
     {
         if (!PhotonNetwork.IsMasterClient) return;
-        gm.Log($"Player {player.nickname} dropping item {prefabName}");
+        lm.Log(logSrc,$"Player {player.ID} dropping item {prefabName}");
         // Create item being dropped
         GameObject go = PhotonNetwork.InstantiateRoomObject(prefabName, cam.transform.position, transform.rotation);
         // Add some force so it moves away from the player who dropped it
@@ -391,7 +394,7 @@ public class FpsController : MonoBehaviourPun
         {
             // ui alert
             gm.Alert("NEED " + act.requiredKey);
-            gm.Log("NEED " + act.requiredKey);
+            lm.Log(logSrc,"NEED " + act.requiredKey);
             return;
         }
         act.Activate(position);

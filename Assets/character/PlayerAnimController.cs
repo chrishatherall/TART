@@ -2,12 +2,14 @@ using Photon.Pun;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using static GameManager;
+using static LogManager;
 
 // Pulls movement details from the FpsController, syncs those values to the network, and passes them to the animator
 
 public class PlayerAnimController : MonoBehaviourPun, IPunObservable
 {
+    readonly string logSrc = "PLAYER_ANIM";
+
     // Animation parameters
     float frontBackMovement; // 1 = full forwards, -1 = full backwards
     float leftRightMovement; // 1 = full right, -1 = full left
@@ -26,7 +28,7 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
         if (!fpsController || !animator)
         {
             // Turn this component off if we can't find the required components
-            gm.LogError("PlayerAnimController could not find required components");
+            lm.LogError(logSrc,"Could not find required components");
             this.enabled = false;
         }
     }

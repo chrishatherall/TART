@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
 using static GameManager;
+using static LogManager;
 
-// TODO recoil/firing inaccuracy
-// TODO amend particle system to aim at our bullet vector
 // TODO ideally modify PS to have a max distance so it runs out at our hit point. Not sure it's worth, 
 //   but avoid using collision, and fixes bug where particle hits a corner a bullet doesn't.
 
 public class Gun : MonoBehaviourPun
 {
+    readonly string logSrc = "GUN";
+
     // Model recoil while shooting
     // Save the default model and max-recoil position (which will be Vector3.zero)
     // When shooting, we'll lerp between these two, based on firing time.
@@ -44,7 +45,6 @@ public class Gun : MonoBehaviourPun
     public float currentRecoil = 0f; // Degrees
     // Max recoil
     public float maxRecoil = 40f; // Degrees
-    // TODO accuracy
     // Recoil increase per shot
     public float recoilPerShot = 10f; // Degrees
     // Recoil decrease per second
@@ -78,7 +78,7 @@ public class Gun : MonoBehaviourPun
         Player owner = GameManager.gm.GetPlayerByID(playerId);
         if (!owner)
         {
-            gm.LogError("Gun setup could not find player " + playerId);
+            lm.LogError(logSrc,"Gun setup could not find player " + playerId);
             return;
         }
 
@@ -90,6 +90,12 @@ public class Gun : MonoBehaviourPun
         fpsController = GetComponentInParent<FpsController>();
         cam = fpsController.playerCamera;
 
+        // If we're setting up for ourselves, set audio emitter to 2d so the gun firing noise 
+        // doesn't annoyingly favour one ear.
+        if (photonView.IsMine)
+        {
+            GetComponent<AudioSource>().spatialBlend = 0f;
+        }
     }
 
     // Called by the shooter on all other clients
@@ -130,7 +136,7 @@ public class Gun : MonoBehaviourPun
         // Check we have an aim vector
         if (aimOrigin == null)
         {
-            gm.LogError("[Gun] " + name + " has no aim origin");
+            lm.LogError(logSrc,name + " has no aim origin");
             return;
         }
 
@@ -142,9 +148,9 @@ public class Gun : MonoBehaviourPun
             Quaternion.AngleAxis(Random.Range(-50f, 51f)/100f * currentRecoil, cam.transform.right).ToEuler();
 
         // Tell ourselves to do the visuals immediately to avoid lag
-        RpcDoSoundAndVisuals(aimOrigin, bulletDirection);
+        //RpcDoSoundAndVisuals(aimOrigin, bulletDirection);
         // Tell clients to do audio/visual stuff
-        photonView.RPC("RpcDoSoundAndVisuals", RpcTarget.Others, aimOrigin, bulletDirection);
+        photonView.RPC("RpcDoSoundAndVisuals", RpcTarget.All, aimOrigin, bulletDirection);
 
         // Check if our raycast has hit anything
         if (Physics.Raycast(aimOrigin, bulletDirection, out RaycastHit hit, range, ~(1 << 7))) // TODO move layermask declaration
@@ -171,7 +177,7 @@ public class Gun : MonoBehaviourPun
             fpsController.CameraWiggle = recoilPerShot;
         } else
         {
-            gm.LogError("[Gun] Cannot find FpsController to add camera wiggle");
+            lm.LogError(logSrc,"Cannot find FpsController to add camera wiggle");
         }
     }
 
