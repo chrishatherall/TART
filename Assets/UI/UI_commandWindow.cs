@@ -19,7 +19,8 @@ public class UI_commandWindow : MonoBehaviourPun
     string[] serverCommands = // Commands run only by the server/host
     {
         "SPAWN",
-        "ROUNDRESTART"
+        "ROUNDRESTART",
+        "BOT"
     };
 
     string[] spawnableItems = {
@@ -104,6 +105,10 @@ public class UI_commandWindow : MonoBehaviourPun
                 {
                     lm.Log(logSrc, $"Invalid SPAWN value: {split[1]}.");
                 }
+                break;
+
+            case "BOT":
+                PhotonNetwork.InstantiateSceneObject("bot", p.GetComponent<FpsController>().lastHit.point, Quaternion.identity);
                 break;
 
             case "KILL":

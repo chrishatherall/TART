@@ -25,7 +25,7 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
         fpsController = GetComponent<FpsController>();
         animator = GetComponent<Animator>();
 
-        if (!fpsController || !animator)
+        if (!animator)
         {
             // Turn this component off if we can't find the required components
             lm.LogError(logSrc,"Could not find required components");
@@ -36,7 +36,7 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
     // Update is called once per frame
     void Update()
     {
-        if (photonView.IsMine)
+        if (photonView.IsMine && fpsController)
         {
             // Pull details from the FpsController
             frontBackMovement = fpsController.frontBackMovement;

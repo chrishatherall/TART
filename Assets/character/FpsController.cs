@@ -9,6 +9,9 @@ using static LogManager;
 // as the basic CharacterController can't handle acceleration changes, and won't be affected by
 // environmental affects.
 
+// TODO also this script should only do control, it should not care about player state. Consider
+// moving item drops, activation, etc, to the player controller
+
 public class FpsController : MonoBehaviourPun
 {
     readonly string logSrc = "FPS_CTRL";
@@ -62,6 +65,9 @@ public class FpsController : MonoBehaviourPun
     // Reference to our player script
     [SerializeField]
     Player player;
+
+    // The last raycast hit of our camera
+    public RaycastHit lastHit;
 
     // Movement values for animation controller
     public bool isGrounded;
@@ -243,6 +249,12 @@ public class FpsController : MonoBehaviourPun
         {
             TryDropHeldItem();
         }
+
+        // Reload
+        if (Input.GetKeyDown("r") && player.heldItem)
+        {
+            player.heldItem.SendMessage("Reload");
+        }
         #endregion
 
         #region Interaction
@@ -250,35 +262,43 @@ public class FpsController : MonoBehaviourPun
         // Raycast forward from our camera to see if we're looking at anything important within range.
         if (!cam) cam = GetComponentInChildren<Camera>();
         Vector3 rayOrigin = cam.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, 0.0f));
-        RaycastHit hit;
-        bool hitSomething = Physics.Raycast(rayOrigin, cam.transform.forward, out hit, activateRange, layermask);
+        bool hitSomething = Physics.Raycast(rayOrigin, cam.transform.forward, out RaycastHit hit, 500f, layermask);
         if (hitSomething)
         {
-            // Find a pickup
-            Pickup pickup = hit.transform.GetComponent<Pickup>();
-            if (pickup && pickup.enabled == true)
-            {
-                // Set our ui tooltip
-                cursorTooltip.text = "[E] Pick up " + pickup.nickname;
+            // Set our last hit to this point
+            lastHit = hit;
 
-                // Try to pick up items
-                if (Input.GetKeyDown(KeyCode.E)) TryPickupItem(pickup.gameObject);
+            // We can't pickup or activate anything beyond our range.
+            if (Vector3.Distance(rayOrigin, hit.point) < activateRange)
+            {
+                // Find a pickup
+                Pickup pickup = lastHit.transform.GetComponent<Pickup>();
+                if (pickup && pickup.enabled == true)
+                {
+                    // Set our ui tooltip
+                    cursorTooltip.text = "[E] Pick up " + pickup.nickname;
+
+                    // Try to pick up items
+                    if (Input.GetKeyDown(KeyCode.E)) TryPickupItem(pickup.gameObject);
+                }
+
+                // Find an activatable
+                Activatable act = lastHit.transform.GetComponent<Activatable>();
+                if (act)
+                {
+                    // Set our ui tooltip
+                    cursorTooltip.text = "[E] Activate " + act.nickname;
+
+                    // Try to activate objects
+                    if (Input.GetKeyDown(KeyCode.E)) TryToActivate(lastHit.transform.gameObject, lastHit.point);
+                } 
+
             }
 
-            // Find an activatable
-            Activatable act = hit.transform.GetComponent<Activatable>();
-            if (act)
-            {
-                // Set our ui tooltip
-                cursorTooltip.text = "[E] Activate " + act.nickname;
-
-                // Try to activate objects
-                if (Input.GetKeyDown(KeyCode.E)) TryToActivate(hit.transform.gameObject, hit.point);
-            } 
         } 
         else 
         {
-            // We're not looking at anything in range, so clear te UI tooltip
+            // We're not looking at anything in range, so clear the UI tooltip
             cursorTooltip.text = "";
         }
 
@@ -408,4 +428,5 @@ public class FpsController : MonoBehaviourPun
         //    act.Activate(position);
         //}
     }
+
 }

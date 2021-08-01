@@ -85,7 +85,7 @@ public class Gun : MonoBehaviourPun
         this.transform.parent = owner.itemAnchor.transform;
         this.transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
         owner.heldItem = this.gameObject;
-        owner.heldItemScript = owner.heldItem.GetComponent<HeldItem>();
+        owner.heldItemScript = this.GetComponent<HeldItem>();
 
         fpsController = GetComponentInParent<FpsController>();
         cam = fpsController.playerCamera;
@@ -103,7 +103,7 @@ public class Gun : MonoBehaviourPun
     public void RpcDoSoundAndVisuals(Vector3 origin, Vector3 direction)
     {
         // Play shoot sound
-        shotSound.Play();
+        shotSound.PlayOneShot(shotSound.clip);
 
         // Play one emission of our particle emitter
         if (ps)
@@ -181,6 +181,12 @@ public class Gun : MonoBehaviourPun
         }
     }
 
+    void Reload()
+    {
+        photonView.RPC("StartReload", RpcTarget.All);
+    }
+
+    [PunRPC]
     // Called when the player hits the reload key
     void StartReload()
     {
@@ -233,11 +239,6 @@ public class Gun : MonoBehaviourPun
         // Reduce time needed for next shot
         timeUntilNextShot -= Time.deltaTime;
         if (timeUntilNextShot < 0f) timeUntilNextShot = 0f;
-
-        if (Input.GetKeyDown("r")) // TODO this won't work in multiplayer
-        {
-            StartReload();
-        }
 
         if (triggerDown && timeUntilNextShot == 0f && bulletsInMag > 0 && !isReloading)
         {
