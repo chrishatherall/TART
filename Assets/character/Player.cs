@@ -121,7 +121,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         oil = 100;
         maxOil = 100;
         // Set damage of each BodyPart to 0
-        foreach(BodyPart bp in bodyParts) { bp.damage = 0; }
+        foreach(BodyPart bp in bodyParts) { bp.Damage = 0; }
         isDead = false;
         this._role = gm.GetRoleFromID(0);
         // Find an Animator and turn it on
@@ -142,7 +142,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         BodyPart bodyPart = GetBodyPartByName(bodyPartName);
         if (bodyPart)
         {
-            bodyPart.damage += dmg;
+            bodyPart.Damage += dmg;
         } else
         {
             lm.LogError(logSrc, $"Could not find body part '{bodyPartName}'");
@@ -192,7 +192,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
     public int GetDamage()
     {
-        return bodyParts.Sum(bp => bp.damage);
+        return bodyParts.Sum(bp => bp.Damage);
     }
 
     // Called when something causes our death

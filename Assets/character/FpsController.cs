@@ -37,6 +37,10 @@ public class FpsController : MonoBehaviourPun
     // Ref to the wiggle object, parent of our camera
     [SerializeField]
     GameObject CamWiggleObject;
+    // Ref to our rigidBody dragger
+    [SerializeField]
+    GameObject rbDragger;
+    SpringJoint sj;
     #endregion
 
     // Character move speed.
@@ -120,6 +124,8 @@ public class FpsController : MonoBehaviourPun
         cam = GetComponentInChildren<Camera>();
         // Find local audio source, used for pickup sounds
         audioSource = GetComponent<AudioSource>();
+        // Set rb dragger stuff
+        sj = rbDragger.GetComponent<SpringJoint>();
 
         if (!player || !charCon || !inventory)
         {
@@ -259,6 +265,12 @@ public class FpsController : MonoBehaviourPun
 
         #region Interaction
 
+        // If we pressed F and are dragging a body, stop
+        if (Input.GetKeyDown(KeyCode.F) && sj.connectedBody)
+        {
+            sj.connectedBody = null;
+        }
+
         // Raycast forward from our camera to see if we're looking at anything important within range.
         if (!cam) cam = GetComponentInChildren<Camera>();
         Vector3 rayOrigin = cam.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, 0.0f));
@@ -291,7 +303,19 @@ public class FpsController : MonoBehaviourPun
 
                     // Try to activate objects
                     if (Input.GetKeyDown(KeyCode.E)) TryToActivate(lastHit.transform.gameObject, lastHit.point);
-                } 
+                }
+
+                // Rigidbody dragging test
+                if (Input.GetKeyDown(KeyCode.F) && !sj.connectedBody)
+                {
+                    // Try to drag
+                    Rigidbody rb = lastHit.transform.GetComponent<Rigidbody>();
+                    if (rb)
+                    {
+                        rbDragger.transform.position = lastHit.transform.position;
+                        sj.connectedBody = rb;
+                    }
+                }
 
             }
 
