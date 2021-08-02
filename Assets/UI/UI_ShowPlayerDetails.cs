@@ -58,7 +58,7 @@ public class UI_ShowPlayerDetails : MonoBehaviour
         }
 
         // Set damage value. The UI shows oil change per second, so if damage>0 then oil change is negative.
-        if (damageValue) damageValue.text = (targetPlayer.damage > 0 ? "-" : "") + targetPlayer.damage + "/s";
+        if (damageValue) damageValue.text = (targetPlayer.GetDamage() > 0 ? "-" : "") + targetPlayer.GetDamage() + "/s";
 
         // Set role name
         if (roleText) roleText.text = targetPlayer.Role.Name;
