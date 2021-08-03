@@ -12,17 +12,15 @@ public class BodyPart : MonoBehaviour
     Player p;
     // The damage on this body part. Note, this is set by the Player and NOT here, as
     // the TakeDamage script below is usually called on other clients, hence the RPC.
-    private int damage;
+    [SerializeField]
+    int damage;
     // The particle system we turn on when damaged. Needs to be manually set
     [SerializeField]
     ParticleSystem ps;
 
     public int Damage { 
         get => damage; 
-        set {
-            damage = value;
-            //if (ps) ps.gameObject.SetActive(damage > 0);
-        }
+        set => damage = value;
     }
 
     private void Update()

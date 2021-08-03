@@ -29,7 +29,7 @@ public class Activatable : MonoBehaviourPun
     }
 
     [PunRPC]
-    public void ActivateOnServer(Vector3 position, PhotonMessageInfo info)
+    public void Activated(Vector3 position, PhotonMessageInfo info)
     {
         // Tell other scripts on this object to activate
         lm.Log(logSrc,"Activated " + nickname);
@@ -41,7 +41,6 @@ public class Activatable : MonoBehaviourPun
     {
         // TODO check things like enabled/disabled, X role only, cooldown, bool on/off like levers, etc
 
-        // This sends the activate to the server only, which could be a bit laggy for us and other clients
-        this.photonView.RPC("ActivateOnServer", RpcTarget.MasterClient, position);
+        this.photonView.RPC("Activated", RpcTarget.All, position);
     }
 }

@@ -116,15 +116,9 @@ public class RotatingDoor : MonoBehaviourPun, IPunObservable
         }
     }
 
-    void OnActivated(Vector3 position)
-    {
-        // Tell all clients we activated this
-        photonView.RPC("ActivateDoor", RpcTarget.All, position);
-    }
 
-    // Called by client on all connected clients
-    [PunRPC]
-    public void ActivateDoor(Vector3 position)
+    // Called by Activatable script on all connected clients
+    public void OnActivated(Vector3 position)
     {
         // Play activate audio
         if (audioSource) audioSource.Play();
