@@ -40,7 +40,7 @@ public class FpsController : MonoBehaviourPun
     // Ref to our rigidBody dragger
     [SerializeField]
     GameObject rbDragger;
-    SpringJoint sj;
+    FixedJoint fj;
     #endregion
 
     // Character move speed.
@@ -125,7 +125,7 @@ public class FpsController : MonoBehaviourPun
         // Find local audio source, used for pickup sounds
         audioSource = GetComponent<AudioSource>();
         // Set rb dragger stuff
-        sj = rbDragger.GetComponent<SpringJoint>();
+        fj = rbDragger.GetComponent<FixedJoint>();
 
         if (!player || !charCon || !inventory)
         {
@@ -265,11 +265,7 @@ public class FpsController : MonoBehaviourPun
 
         #region Interaction
 
-        // If we pressed F and are dragging a body, stop
-        if (Input.GetKeyDown(KeyCode.F) && sj.connectedBody)
-        {
-            sj.connectedBody = null;
-        }
+
 
         // Raycast forward from our camera to see if we're looking at anything important within range.
         if (!cam) cam = GetComponentInChildren<Camera>();
@@ -305,18 +301,6 @@ public class FpsController : MonoBehaviourPun
                     if (Input.GetKeyDown(KeyCode.E)) TryToActivate(lastHit.transform.gameObject, lastHit.point);
                 }
 
-                // Rigidbody dragging test
-                if (Input.GetKeyDown(KeyCode.F) && !sj.connectedBody)
-                {
-                    // Try to drag
-                    Rigidbody rb = lastHit.transform.GetComponent<Rigidbody>();
-                    if (rb)
-                    {
-                        rbDragger.transform.position = lastHit.transform.position;
-                        sj.connectedBody = rb;
-                    }
-                }
-
             }
 
         } 
@@ -324,6 +308,24 @@ public class FpsController : MonoBehaviourPun
         {
             // We're not looking at anything in range, so clear the UI tooltip
             cursorTooltip.text = "";
+        }
+
+        // If we pressed F and are dragging a body, stop
+        if (Input.GetKeyDown(KeyCode.F))
+        {
+            if (fj.connectedBody)
+            {
+                fj.connectedBody = null;
+            } else if (hitSomething)
+            {
+                // Try to drag
+                Rigidbody rb = lastHit.transform.GetComponent<Rigidbody>();
+                if (rb)
+                {
+                    rbDragger.transform.position = lastHit.transform.position;
+                    fj.connectedBody = rb;
+                }
+            }
         }
 
         #endregion
