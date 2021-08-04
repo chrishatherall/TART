@@ -10,6 +10,12 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
 {
     readonly string logSrc = "PLAYER_ANIM";
 
+    // IK
+    [SerializeField]
+    Vector3 lookPos;
+    [SerializeField]
+    GameObject rightHandIKObj;
+
     // Animation parameters
     float frontBackMovement; // 1 = full forwards, -1 = full backwards
     float leftRightMovement; // 1 = full right, -1 = full left
@@ -43,6 +49,7 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
             leftRightMovement = fpsController.leftRightMovement;
             isMoving = fpsController.isMoving;
             isGrounded = fpsController.isGrounded;
+            lookPos = fpsController.lastHit.point;
 
             // TODO this should be pulled from the FpsController instead of directly
             if (Input.GetKeyDown("space"))
@@ -56,6 +63,37 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
         animator.SetFloat("leftRightMovement", leftRightMovement);
         animator.SetBool("isMoving", isMoving);
         animator.SetBool("isGrounded", isGrounded);
+    }
+
+    // Callback for calculating IK
+    void OnAnimatorIK()
+    {
+        if (!animator) return;
+
+        // Head IK
+        if (lookPos != null)
+        {
+            animator.SetLookAtWeight(1);
+            animator.SetLookAtPosition(lookPos);
+        } 
+        else
+        {
+            animator.SetLookAtWeight(0);
+        }
+
+        // Held object IK
+        if (rightHandIKObj)
+        {
+            animator.SetIKPositionWeight(AvatarIKGoal.RightHand, 1);
+            animator.SetIKRotationWeight(AvatarIKGoal.RightHand, 1);
+            animator.SetIKPosition(AvatarIKGoal.RightHand, rightHandIKObj.transform.position);
+            animator.SetIKRotation(AvatarIKGoal.RightHand, rightHandIKObj.transform.rotation);
+        } 
+        else
+        {
+            animator.SetIKPositionWeight(AvatarIKGoal.RightHand, 0);
+            animator.SetIKRotationWeight(AvatarIKGoal.RightHand, 0);
+        }
     }
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
