@@ -26,6 +26,8 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     public string nickname;
     // The unique actor number provided by photon to networked players (alias is ID)
     public int actorNumber;
+    // The thing this player is looking at
+    public Vector3 aim;
     #endregion
 
     // Flag for bots
@@ -54,6 +56,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             stream.SendNext(isReady);
             stream.SendNext(nickname);
             stream.SendNext(actorNumber);
+            stream.SendNext(aim);
         }
         else
         {
@@ -64,6 +67,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             this.isReady = (bool)stream.ReceiveNext();
             this.nickname = (string)stream.ReceiveNext();
             this.actorNumber = (int)stream.ReceiveNext();
+            this.aim = (Vector3)stream.ReceiveNext();
         }
     }
 
@@ -81,9 +85,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             lm.LogError(logSrc,"GM not ready!");
             return;
         }
-        // Announce self to GM.
-        lm.Log(logSrc,"Started. Announcing to GameManager.");
-        gm.AddPlayer(this);
+
         // Set ourselves as default role
         this._role = gm.GetRoleFromID(0);
 
@@ -106,6 +108,10 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             }
             isReady = true;
         }
+
+        // Announce self to GM.
+        lm.Log(logSrc, "Started. Announcing to GameManager.");
+        gm.AddPlayer(this);
     }
 
     [PunRPC]

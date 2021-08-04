@@ -89,11 +89,6 @@ public class FpsController : MonoBehaviourPun
     // The audio source we use to emit sounds from this character
     private AudioSource audioSource;
 
-    // The parent of the item anchor which rotates to look at our hit point. Makes guns aim
-    // roughly at the place we're looking
-    [SerializeField]
-    GameObject itemAnchorParent;
-
     // The text box shown below our cursor, for displaying information on pickups, activatables, etc
     public UnityEngine.UI.Text cursorTooltip;
 
@@ -279,6 +274,7 @@ public class FpsController : MonoBehaviourPun
         {
             // Set our last hit to this point
             lastHit = hit;
+            player.aim = hit.point;
 
             // We can't pickup or activate anything beyond our range.
             if (Vector3.Distance(rayOrigin, hit.point) < activateRange)
@@ -306,9 +302,6 @@ public class FpsController : MonoBehaviourPun
                 }
 
             }
-
-            // Rotate item anchor
-            itemAnchorParent.transform.LookAt(hit.point);
 
         } 
         else 
@@ -346,6 +339,7 @@ public class FpsController : MonoBehaviourPun
         #endregion
     }
 
+    // TODO should be on player
     void TryPickupItem (GameObject item)
     {
         // If the player is already holding an item, drop it before picking up the new one
@@ -406,6 +400,9 @@ public class FpsController : MonoBehaviourPun
         this.transform.position = gm.GetPlayerSpawnLocation();
         this.charCon.enabled = true;
     }
+
+    // TODO yea all of this stuff should be on the player really
+
 
     // Drops our held item into the world. Called when we press G or on death
     public void TryDropHeldItem ()

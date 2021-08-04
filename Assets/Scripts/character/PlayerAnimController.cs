@@ -16,6 +16,11 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
     [SerializeField]
     GameObject rightHandIKObj;
 
+    // The parent of the item anchor which rotates to look at our hit point. Makes guns aim
+    // roughly at the place we're looking
+    [SerializeField]
+    GameObject itemAnchorParent;
+
     // Animation parameters
     float frontBackMovement; // 1 = full forwards, -1 = full backwards
     float leftRightMovement; // 1 = full right, -1 = full left
@@ -25,13 +30,15 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
     // Component references
     FpsController fpsController;
     Animator animator;
+    Player player;
 
     public void Start()
     {
         fpsController = GetComponent<FpsController>();
         animator = GetComponent<Animator>();
+        player = GetComponent<Player>();
 
-        if (!animator)
+        if (!animator || !player)
         {
             // Turn this component off if we can't find the required components
             lm.LogError(logSrc,"Could not find required components");
@@ -49,7 +56,6 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
             leftRightMovement = fpsController.leftRightMovement;
             isMoving = fpsController.isMoving;
             isGrounded = fpsController.isGrounded;
-            lookPos = fpsController.lastHit.point;
 
             // TODO this should be pulled from the FpsController instead of directly
             if (Input.GetKeyDown("space"))
@@ -72,6 +78,9 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
         animator.SetBool("isMoving", isMoving);
         animator.SetBool("isGrounded", isGrounded);
 
+        // Rotate item anchor
+        itemAnchorParent.transform.LookAt(player.aim);
+
     }
 
     // Callback for calculating IK
@@ -83,7 +92,7 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
         if (lookPos != null)
         {
             animator.SetLookAtWeight(1);
-            animator.SetLookAtPosition(lookPos);
+            animator.SetLookAtPosition(player.aim);
         }
         else
         {
