@@ -13,6 +13,8 @@ public class HeldItem : MonoBehaviour
     // Item name
     public string nickname;
 
+    public GameObject rightHandIKAnchor;
+
     // Sets values from the fps controller that an item could use. TODO maybe use setters?
     public void SetValues (Vector3 aimOrigin, bool triggerDown)
     {

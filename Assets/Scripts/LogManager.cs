@@ -47,7 +47,12 @@ public class LogManager : MonoBehaviour
     { AddLog(source, msg, true); }
 
     public void HandleUnityLog(string logString, string stack, LogType type)
-    { AddLog("Unity", logString, type == LogType.Error); }
+    {
+        // Catches a recursive error
+        if (logString.Contains("UnityEngine.UI")) return;
+
+        AddLog("Unity", logString, type == LogType.Error); 
+    }
 
 
 }

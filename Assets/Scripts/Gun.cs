@@ -112,8 +112,12 @@ public class Gun : MonoBehaviourPun
             ps.Play();
         }
 
+        // Temp thing to try and not hit ourselves
+        int layermask = 1;
+        if (photonView.IsMine) layermask = ~(1 << 7);
+
         // Check if our raycast has hit anything
-        if (Physics.Raycast(origin, direction, out RaycastHit hit, range)) // TODO for other people this will likely hit our player all the time
+        if (Physics.Raycast(origin, direction, out RaycastHit hit, range, layermask)) // TODO for other people this will likely hit our player all the time
         {
             ps.gameObject.transform.LookAt(hit.point);
             // TODO pool objects

@@ -56,6 +56,14 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
             {
                 animator.SetTrigger("triggerJumped");
             }
+
+            if (fpsController.player.heldItemScript)
+            {
+                rightHandIKObj = fpsController.player.heldItemScript.rightHandIKAnchor;
+            } else
+            {
+                rightHandIKObj = null;
+            }
         }
 
         // Set details on animator
@@ -63,6 +71,7 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
         animator.SetFloat("leftRightMovement", leftRightMovement);
         animator.SetBool("isMoving", isMoving);
         animator.SetBool("isGrounded", isGrounded);
+
     }
 
     // Callback for calculating IK
@@ -70,12 +79,12 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
     {
         if (!animator) return;
 
-        // Head IK
+        //Head IK
         if (lookPos != null)
         {
             animator.SetLookAtWeight(1);
             animator.SetLookAtPosition(lookPos);
-        } 
+        }
         else
         {
             animator.SetLookAtWeight(0);
