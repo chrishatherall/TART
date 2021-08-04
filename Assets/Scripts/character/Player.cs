@@ -102,6 +102,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             {
                 actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
                 nickname = PhotonNetwork.LocalPlayer.NickName;
+                SetLayer(7); // Set to localplayer layer
             }
             isReady = true;
         }
@@ -227,4 +228,11 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         }
     }
 
+    void SetLayer(int layer)
+    {
+        foreach (Transform t in GetComponentsInChildren<Transform>(includeInactive: true))
+        {
+            t.gameObject.layer = layer;
+        }
+    }
 }
