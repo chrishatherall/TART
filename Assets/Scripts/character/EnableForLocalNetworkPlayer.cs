@@ -12,14 +12,22 @@ public class EnableForLocalNetworkPlayer : MonoBehaviourPun
     [SerializeField]
     Behaviour[] compsToEnable;
 
+    [SerializeField] 
+    GameObject[] GameobjectsToDisable;
+
     // Start is called before the first frame update
     void Start()
     {
         if (photonView.IsMine)
         {
-            for (int i = 0; i < compsToEnable.Length; i++)
+            foreach (Behaviour b in compsToEnable)
             {
-                compsToEnable[i].enabled = true;
+                b.enabled = true;
+            }
+
+            foreach (GameObject g in GameobjectsToDisable)
+            {
+                g.SetActive(false);
             }
         }
     }

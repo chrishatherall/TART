@@ -397,7 +397,9 @@ public class FpsController : MonoBehaviourPun
     {
         // Turn off the character controller before force-moving, or it'll just set us right back.
         this.charCon.enabled = false;
-        this.transform.position = gm.GetPlayerSpawnLocation();
+        Transform spawn = gm.GetPlayerSpawnLocation();
+        this.transform.position = spawn.position;
+        this.transform.rotation = spawn.rotation;
         this.charCon.enabled = true;
     }
 

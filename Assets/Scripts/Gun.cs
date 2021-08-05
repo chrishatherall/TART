@@ -65,7 +65,7 @@ public class Gun : MonoBehaviourPun
     // Ref to the camera, which we use for aiming
     public Camera cam;
 
-    // Ref to the model anchor transform, which is rotated in some situations (eg, mac10 held sideways)
+    // Ref to the model anchor transform
     [SerializeField]
     GameObject modelAnchor;
     // Ref to the particle emitter

@@ -112,6 +112,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         // Announce self to GM.
         lm.Log(logSrc, "Started. Announcing to GameManager.");
         gm.AddPlayer(this);
+
+        // Parent self to gm's spawned-players object for cleanliness
+        this.transform.parent = gm.playerSpawnParent;
     }
 
     [PunRPC]

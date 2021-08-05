@@ -81,6 +81,10 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     // List of gameobjects with spawnitems, needs to be set manually
     public List<GameObject> spawnTables;
 
+    // The object which scene-spawned items/players should parent to, purely for cleanliness. 
+    public Transform itemSpawnParent;
+    public Transform playerSpawnParent;
+
     // TODO these should be on some kind of player manager, which also hosts anything related to a specific player (death screen, spectator mode prefab, player ui, etc)
     // Basically this GM should only care about the game itself
 
@@ -285,17 +289,17 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         #endregion
     }
 
-    public Vector3 GetPlayerSpawnLocation()
+    public Transform GetPlayerSpawnLocation()
     {
         // TODO this should choose a random player spawn, but take into account other player's distance from
         // spawns. We don't want people spawning inside each other.
         if (playerSpawnLocations.Length == 0)
         {
             lm.LogError(logSrc, "Couldnt get player spawn, list is empty.");
-            return Vector3.zero;
+            return this.transform;
         }
         int index = Random.Range(0, playerSpawnLocations.Length);
-        return playerSpawnLocations[index].transform.position;
+        return playerSpawnLocations[index].transform;
     }
 
     public void Alert(string message)
@@ -347,8 +351,9 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         }
         else
         {
+            Transform spawn = GetPlayerSpawnLocation();
             // Spawn a character for the local player
-            PhotonNetwork.Instantiate(this.playerPrefab.name, GetPlayerSpawnLocation(), Quaternion.identity, 0);
+            PhotonNetwork.Instantiate(this.playerPrefab.name, spawn.position, spawn.rotation, 0);
         }
     }
 

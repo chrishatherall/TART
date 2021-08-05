@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
+using static GameManager;
 
 // A pickup is something that can be E'd by a player and is highlighted when they look at it.
 // Examples: Guns, items on floor
@@ -16,4 +17,10 @@ public class Pickup : MonoBehaviourPun
     public GameObject prefabHeld;
 
     public AudioClip pickupSound;
+
+    private void Start()
+    {
+        // parent this item to the GM's spawned-items object to keep things tidy
+        this.transform.parent = gm.itemSpawnParent;
+    }
 }
