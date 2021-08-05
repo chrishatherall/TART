@@ -120,7 +120,7 @@ public class UI_commandWindow : MonoBehaviourPun
                 // Set round to postround
                 gm.CurrentGameState = GameState.PostRound;
                 // Set roundovertime to something smaller than maxroundovertime to make the postround quick
-                gm.curPostRoundTime = gm.postRoundTime - 1;
+                gm.curPostRoundTime = 1;
                 // This should initiate the postround cleanup, give it time, then start the preround spawning
                 // TODO somehow force a draw with no points
                 break;

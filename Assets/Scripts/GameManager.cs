@@ -60,6 +60,9 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     private GameState _curGameState = GameState.PreRound;
     private GameState previousGameState = GameState.PreRound;
 
+    // Gamemode
+    public string gamemode;
+
     // Connected players. Player scripts add themselves on startup via AddPlayer
     public List<Player> players;
 
@@ -70,10 +73,33 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     private List<TartRole> roles;
 
     // Round delay times (seconds)
-    public float preRoundTime = 15;
+    float DC_preRoundTime = 15;
+    float DC_postRoundTime = 15;
+    float DM_preRoundTime = 1;
+    float DM_postRoundTime = 1;
     public float curPreRoundTime;
-    public float postRoundTime = 15;
     public float curPostRoundTime;
+
+    public float preRoundTime
+    {
+        get {
+            switch (gamemode) {
+                case "Deception": return DC_preRoundTime;
+                case "Deathmatch": return DM_preRoundTime;
+                default: return 1;
+            }
+        }
+    }
+    public float postRoundTime
+    {
+        get {
+            switch (gamemode) {
+                case "Deception": return DC_postRoundTime;
+                case "Deathmatch": return DM_postRoundTime;
+                default: return 1;
+            }
+        }
+    }
 
     // Player spawn locations, discovered on startup
     public PlayerSpawn[] playerSpawnLocations;
@@ -128,6 +154,9 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         roles.Add(new TartRole(1, "Innocent", Color.green));
         roles.Add(new TartRole(2, "Traitor", Color.red));
 
+        // Pull the gamemode from the Photon room settings
+        gamemode = PhotonNetwork.CurrentRoom.CustomProperties["gamemode"].ToString();
+
         // Set our initial round timers
         curPreRoundTime = preRoundTime;
         curPostRoundTime = postRoundTime;
@@ -156,80 +185,142 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         // Remove any players from the list that don't exist
         players.RemoveAll(delegate (Player p) { return !p; });
 
-        // Further code is run by the server only
+        CalculateGameState();
+    }
+
+    // Run once per frame via Update. Changes game state if conditions are met.
+    void CalculateGameState()
+    {
+        // Should be run by the server only
         if (!PhotonNetwork.IsMasterClient) return;
 
-        // Determine state changes
-        switch (_curGameState)
+        switch (gamemode)
         {
-            // Pre-round
-            case GameState.PreRound:
-                // Check we have enough players to start a round.
-                List<Player> readyPlayers = players.FindAll(p => p.isReady);
-                if (readyPlayers.Count >= minPlayers) {
-                    // Use the pre-round time as a delay to avoid jarring gameplay
-                    if (curPreRoundTime > 0)
-                    {
-                        curPreRoundTime -= Time.deltaTime;
+            #region Deception
+            case "Deception":
+                // Determine state changes
+                switch (_curGameState)
+                {
+                    // Pre-round
+                    case GameState.PreRound:
+                        // Check we have enough players to start a round.
+                        List<Player> readyPlayers = players.FindAll(p => p.isReady);
+                        if (readyPlayers.Count >= minPlayers)
+                        {
+                            // Use the pre-round time as a delay to avoid jarring gameplay
+                            if (curPreRoundTime > 0)
+                            {
+                                curPreRoundTime -= Time.deltaTime;
+                                break;
+                            }
+                            // Reset pre-round time
+                            curPreRoundTime = DC_preRoundTime;
+                            CurrentGameState = GameState.Active;
+                        }
                         break;
-                    }
-                    // Reset pre-round time
-                    curPreRoundTime = preRoundTime;
-                    CurrentGameState = GameState.Active;
+
+                    // Round active
+                    case GameState.Active:
+                        // Check for an end-game state.
+                        // Get living traitors and innocents.
+                        int lTraitors = 0;
+                        int lInnocents = 0;
+                        players.ForEach(delegate (Player p)
+                        {
+                            if (p.isDead) return; // We don't care about dead people.
+                            if (p.Role.ID == 1) lInnocents++;
+                            if (p.Role.ID == 2) lTraitors++;
+                        });
+                        // Traitor win.
+                        if (lInnocents == 0)
+                        {
+                            lm.Log(logSrc, "Traitors win!");
+                            CurrentGameState = GameState.PostRound;
+                            RaiseEvent(Events.TraitorWin);
+
+                        }
+                        // Innocent win.
+                        if (lTraitors == 0)
+                        {
+                            lm.Log(logSrc, "Innocents win!");
+                            CurrentGameState = GameState.PostRound;
+                            RaiseEvent(Events.InnocentWin);
+                        }
+                        break;
+
+                    // Post-round
+                    case GameState.PostRound:
+                        // Use the post-round time as a delay to avoid jarring gameplay
+                        if (curPostRoundTime > 0)
+                        {
+                            curPostRoundTime -= Time.deltaTime;
+                            break;
+                        }
+                        // Reset pre-round time
+                        curPostRoundTime = DC_postRoundTime;
+                        CurrentGameState = GameState.PreRound;
+                        break;
+
+                    default:
+                        break;
                 }
                 break;
+            #endregion
 
-            // Round active
-            case GameState.Active:
-                // Check for an end-game state.
-                // Get living traitors and innocents.
-                int lTraitors = 0;
-                int lInnocents = 0;
-                players.ForEach(delegate (Player p)
+            #region Deathmatch
+            case "Deathmatch":
+                // Determine state changes
+                switch (_curGameState)
                 {
-                    if (p.isDead) return; // We don't care about dead people.
-                    if (p.Role.ID == 1) lInnocents++;
-                    if (p.Role.ID == 2) lTraitors++;
-                });
-                // Traitor win.
-                if (lInnocents == 0)
-                {
-                    lm.Log(logSrc,"Traitors win!");
-                    CurrentGameState = GameState.PostRound;
-                    RaiseEvent(Events.TraitorWin);
+                    // Pre-round
+                    case GameState.PreRound:
+                        // Use the pre-round time as a delay to avoid jarring gameplay
+                        if (curPreRoundTime > 0)
+                        {
+                            curPreRoundTime -= Time.deltaTime;
+                            break;
+                        }
+                        // Reset pre-round time
+                        curPreRoundTime = DM_preRoundTime;
+                        CurrentGameState = GameState.Active;
+                        break;
 
-                }
-                // Innocent win.
-                if (lTraitors == 0) {
-                    lm.Log(logSrc,"Innocents win!");
-                    CurrentGameState = GameState.PostRound;
-                    RaiseEvent(Events.InnocentWin);
+                    // Round active
+                    case GameState.Active:
+                        // Check for an end-game state.
+                        // First to X kills
+                        break;
+
+                    // Post-round
+                    case GameState.PostRound:
+                        // Use the post-round time as a delay to avoid jarring gameplay
+                        if (curPostRoundTime > 0)
+                        {
+                            curPostRoundTime -= Time.deltaTime;
+                            break;
+                        }
+                        // Reset pre-round time
+                        curPostRoundTime = DM_postRoundTime;
+                        CurrentGameState = GameState.PreRound;
+                        break;
+
+                    default:
+                        break;
                 }
                 break;
-
-            // Post-round
-            case GameState.PostRound:
-                // Use the pre-round time as a delay to avoid jarring gameplay
-                if (curPostRoundTime > 0)
-                {
-                    curPostRoundTime -= Time.deltaTime;
-                    break;
-                }
-                // Reset pre-round time
-                curPostRoundTime = postRoundTime;
-                CurrentGameState = GameState.PreRound;
-                break;
+            #endregion
 
             default:
+                lm.LogError(logSrc, "UNKNOWN GAMEMODE!");
+                this.enabled = false;
                 break;
         }
+
     }
 
     // Called when the game state changes
     void GameStateChanged(GameState oldState, GameState newState)
     {
-        Alert("Game state changed from " + oldState + " to " + newState);
-
         #region PreRound
         if (newState == GameState.PreRound)
         {
@@ -251,6 +342,8 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         if (newState == GameState.Active)
         {
             lm.Log(logSrc,"Round started!");
+
+            ResetPlayers();
 
             if (PhotonNetwork.IsMasterClient)
             {

@@ -13,6 +13,13 @@ public class UI_ShowPlayerDetails : MonoBehaviour
     public UnityEngine.UI.Image curHealthImage;
     // Max health image, used to calculate curHealthImage scale
     public UnityEngine.UI.Image maxHealthImage;
+    
+    // The gamemode text box
+    public UnityEngine.UI.Text gamemodeText;
+    // Current time image, which scales X with round time value
+    public UnityEngine.UI.Image curTimeImage;
+    // Max time image, used to calculate curTimeImage scale
+    public UnityEngine.UI.Image maxTimeImage;
 
     // Damage string box
     public UnityEngine.UI.Text damageValue;
@@ -55,6 +62,27 @@ public class UI_ShowPlayerDetails : MonoBehaviour
         {
             Vector2 newSize = new Vector2(maxHealthImage.rectTransform.rect.width * ((float)targetPlayer.oil / (float)targetPlayer.maxOil), maxHealthImage.rectTransform.rect.height);
             curHealthImage.rectTransform.sizeDelta = newSize;
+        }
+
+        // Set gamemode text and values
+        if (gamemodeText) gamemodeText.text = gm.gamemode + "\n" + gm.CurrentGameState;
+        // Scale image according to pre-round/post-round
+        if (curTimeImage && maxTimeImage)
+        {
+            Vector2 newSize = new Vector2();
+            switch (gm.CurrentGameState)
+            {
+                case GameState.PreRound:
+                    newSize = new Vector2(maxTimeImage.rectTransform.rect.width * (1 - (gm.curPreRoundTime / gm.preRoundTime)), maxTimeImage.rectTransform.rect.height);
+                    break;
+                case GameState.Active:
+                    newSize = new Vector2(maxTimeImage.rectTransform.rect.width, maxTimeImage.rectTransform.rect.height);
+                    break;
+                case GameState.PostRound:
+                    newSize = new Vector2(maxTimeImage.rectTransform.rect.width * (gm.curPostRoundTime / gm.postRoundTime), maxTimeImage.rectTransform.rect.height);
+                    break;
+            }
+            curTimeImage.rectTransform.sizeDelta = newSize;
         }
 
         // Set damage value. The UI shows oil change per second, so if damage>0 then oil change is negative.
