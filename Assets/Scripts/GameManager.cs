@@ -148,14 +148,25 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     {
         // Add reference to ourself to the static GameManager
         gm = this;
-        // Add roles
-        roles = new List<TartRole>();
-        roles.Add(new TartRole(0, "Spectator", Color.grey));
-        roles.Add(new TartRole(1, "Innocent", Color.green));
-        roles.Add(new TartRole(2, "Traitor", Color.red));
 
         // Pull the gamemode from the Photon room settings
         gamemode = PhotonNetwork.CurrentRoom.CustomProperties["gamemode"].ToString();
+
+        // Add roles
+        roles = new List<TartRole>();
+        switch (gamemode)
+        {
+            case "Deathmatch":
+                roles.Add(new TartRole(0, "Murderer", Color.grey));
+                break;
+
+            case "Deception":
+                roles.Add(new TartRole(0, "Spectator", Color.grey));
+                roles.Add(new TartRole(1, "Innocent", Color.green));
+                roles.Add(new TartRole(2, "Traitor", Color.red));
+                break;
+        }
+
 
         // Set our initial round timers
         curPreRoundTime = preRoundTime;
@@ -345,22 +356,23 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
 
             ResetPlayers();
 
-            if (PhotonNetwork.IsMasterClient)
-            {
-                List<Player> readyPlayers = players.FindAll(p => p.isReady);
-                // Assign roles to players.
-                // For a simple solution just take a random person to be the traitor
-                int[] roles = new int[players.Count];
-                System.Random rnd = new System.Random();
-                roles[rnd.Next(0, players.Count - 1)] = 2; // Set random person as traitor
-                int index = 0;
-                readyPlayers.ForEach(delegate (Player p)
-                {
-                    int roleId = roles[index] == 0 ? 1 : roles[index];
-                    p.photonView.RPC("SetRoleById", RpcTarget.All, roleId);
-                    index++;
-                });
-            }
+            // The stuff below is Deception only
+            //if (PhotonNetwork.IsMasterClient)
+            //{
+            //    List<Player> readyPlayers = players.FindAll(p => p.isReady);
+            //    // Assign roles to players.
+            //    // For a simple solution just take a random person to be the traitor
+            //    int[] roles = new int[players.Count];
+            //    System.Random rnd = new System.Random();
+            //    roles[rnd.Next(0, players.Count - 1)] = 2; // Set random person as traitor
+            //    int index = 0;
+            //    readyPlayers.ForEach(delegate (Player p)
+            //    {
+            //        int roleId = roles[index] == 0 ? 1 : roles[index];
+            //        p.photonView.RPC("SetRoleById", RpcTarget.All, roleId);
+            //        index++;
+            //    });
+            //}
 
             roundChange.clip = roundStart;
             roundChange.Play();
