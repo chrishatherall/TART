@@ -145,31 +145,33 @@ public class Gun : MonoBehaviourPun
         }
 
         // Determine bullet direction
-        //Vector3 bulletDirection = cam.transform.forward;
         // Add weapon inaccuracy. Recoil goes up in a V
         Vector3 bulletDirection = cam.transform.forward +
             Quaternion.AngleAxis(currentRecoil, cam.transform.up).ToEuler() +
             Quaternion.AngleAxis(Random.Range(-50f, 51f)/100f * currentRecoil, cam.transform.right).ToEuler();
 
-        // Tell ourselves to do the visuals immediately to avoid lag
-        //RpcDoSoundAndVisuals(aimOrigin, bulletDirection);
-        // Tell clients to do audio/visual stuff
+        // Tell clients (including ourselves) to do audio/visual stuff
         photonView.RPC("RpcDoSoundAndVisuals", RpcTarget.All, aimOrigin, bulletDirection);
 
         // Check if our raycast has hit anything
         if (Physics.Raycast(aimOrigin, bulletDirection, out RaycastHit hit, range, ~(1 << 7))) // TODO move layermask declaration
         {
             // Tell the object we hit to take damage
-            // TODO needs to be RPCd
-            hit.transform.gameObject.SendMessage("TakeDamage", damage, SendMessageOptions.DontRequireReceiver);
+            // We currently only damage bodyparts
+            BodyPart bp = hit.transform.GetComponent<BodyPart>();
+            if (bp)
+            {
+                // If we hit a bodypart, send an rpc to the parent player object 
+                bp.p.photonView.RPC("TakeDamage", RpcTarget.All, damage, bp.name);
+            }
 
             // Check if the object we hit has a rigidbody attached
-            if (hit.rigidbody != null)
-            {
-                // TODO not networked
-                // Add force to the rigidbody we hit, in the direction from which it was hit
-                hit.rigidbody.AddForce(-hit.normal * shotForce);
-            }
+            //if (hit.rigidbody != null)
+            //{
+            //    // TODO not networked
+            //    // Add force to the rigidbody we hit, in the direction from which it was hit
+            //    hit.rigidbody.AddForce(-hit.normal * shotForce);
+            //}
         }
 
         // Add recoil to gun

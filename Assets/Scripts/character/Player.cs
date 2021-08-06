@@ -19,7 +19,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     public int oil = 100;
     public int maxOil = 100;
     // is the player dead
-    public bool isDead = false;
+    private bool _isDead = false;
     // Local player is loaded and ready to play a round
     public bool isReady = false;
     // Name of this player
@@ -52,7 +52,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             // We own this player: send the others our data
             stream.SendNext(oil);
             stream.SendNext(maxOil);
-            stream.SendNext(isDead);
+            stream.SendNext(IsDead);
             stream.SendNext(isReady);
             stream.SendNext(nickname);
             stream.SendNext(actorNumber);
@@ -63,7 +63,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             // Network player, receive data
             this.oil = (int)stream.ReceiveNext();
             this.maxOil = (int)stream.ReceiveNext();
-            this.isDead = (bool)stream.ReceiveNext();
+            this.IsDead = (bool)stream.ReceiveNext();
             this.isReady = (bool)stream.ReceiveNext();
             this.nickname = (string)stream.ReceiveNext();
             this.actorNumber = (int)stream.ReceiveNext();
@@ -76,6 +76,17 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
     // ID is a alias for actorNumber
     public int ID { get => actorNumber; }
+    public bool IsDead { 
+        get => _isDead;
+        set
+        {
+            if (_isDead != value)
+            {
+                _isDead = value;
+                if (_isDead) Die();
+            }
+        }
+    }
 
     void Start()
     {
@@ -132,11 +143,10 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         maxOil = 100;
         // Set damage of each BodyPart to 0
         foreach(BodyPart bp in bodyParts) { bp.Damage = 0; }
-        isDead = false;
+        IsDead = false;
         this._role = gm.GetRoleFromID(0);
-        // Find an Animator and turn it on
-        Animator ani = GetComponent<Animator>();
-        if (ani) ani.enabled = true;
+
+        SetRagdoll(false);
     }
 
     [PunRPC]
@@ -146,7 +156,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         if (!photonView.IsMine) return;
 
         // Can't take more damage if we're dead
-        if (isDead) return;
+        if (IsDead) return;
 
         // Find the BodyPart that took damage
         BodyPart bodyPart = GetBodyPartByName(bodyPartName);
@@ -161,9 +171,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         // To make damage more responsive, kill player instantly if damage > oil
         if (GetDamage() > oil)
         {
-            oil = 0;
-            Die("Unknown", "Oil loss");
-            if (!isBot) gm.Alert("DEAD");
+            Kill();
         }
     }
 
@@ -172,8 +180,8 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     private float msSinceLastTick = 0;
     public void Update()
     {
-        if (!photonView || !photonView.IsMine) return;
-        // TODO this should only run on one 
+        if (!photonView.IsMine) return;
+
         msSinceLastTick += Time.deltaTime;
         if (msSinceLastTick > 1) // One second
         {
@@ -186,10 +194,10 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             {
                 oil -= dmg; // TODO: Hook into this change to create oil leaks on the floor. Oil can still leak if dead via other means, creating cool oil pools.
                 // If we're out of oil and not dead, die.
-                if (oil <= 0 && !isDead)
+                if (oil <= 0 && !IsDead)
                 {
                     oil = 0;
-                    Die();
+                    IsDead = true;
                 }
             }
         }
@@ -205,21 +213,44 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         return bodyParts.Sum(bp => bp.Damage);
     }
 
-    // Called when something causes our death
-    public void Die(string source = "Unknown", string method = "Unknown")
+    // Turns ragdoll on/off
+    void SetRagdoll(bool ragdoll)
     {
-        lm.Log(logSrc, $"{nickname} died.");
-
-        isDead = true;
+        // Change the rigidbody of all of our body parts to ragdoll mode
+        foreach (BodyPart bp in bodyParts)
+        {
+            Rigidbody rb = bp.GetComponent<Rigidbody>();
+            rb.isKinematic = !ragdoll;
+            rb.useGravity = ragdoll;
+        }
 
         // Find an Animator and turn it off
         Animator ani = GetComponent<Animator>();
-        if (ani) ani.enabled = false;
-        // TODO at this point we should turn all the ragdoll things (joints) ON, for efficiency?
+        if (ani) ani.enabled = !ragdoll;
+    }
+
+    // Instantly kills this player (if local)
+    public void Kill()
+    {
+        if (!photonView.IsMine)
+        {
+            lm.LogError(logSrc, "Tried to Kill a non-local player");
+            return;
+        }
+        IsDead = true;
+    }
+
+    // Called when when isdead is set to true
+    void Die()
+    {
+        lm.Log(logSrc, $"{nickname} died.");
+
+        SetRagdoll(true);
 
         // We don't need to do anything else if this isn't our player
         if (!this.photonView.IsMine) return;
 
+        if (!isBot) gm.Alert("YOU DIED");
         // TODO this might be better hooking into an event to increase modularity
         // Try to drop our held item
         FpsController fpsc = GetComponent<FpsController>();
@@ -231,7 +262,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             // Turn on the dead screen
             gm.DeadScreen.SetActive(true);
             // Set dead screen message
-            gm.DeathDetailsText.text = $"Killed by {source} with {method}";
+            //gm.DeathDetailsText.text = $"Killed by {source} with {method}";
             // Activate mouse
             Cursor.lockState = CursorLockMode.None;
         }

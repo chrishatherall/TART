@@ -131,6 +131,9 @@ public class FpsController : MonoBehaviourPun
             lm.LogError(logSrc,"Missing components!");
         }
 
+        // Turn on character controller
+        if (photonView.IsMine) charCon.enabled = true;
+
         // Turn off the cursor
         Cursor.lockState = CursorLockMode.Locked;
 
@@ -141,7 +144,7 @@ public class FpsController : MonoBehaviourPun
     // Update is called once per frame
     void Update()
     {
-        if (player.isDead) return; // Don't do anything if we're dead. Introduces a bug when dying in midair, but whatever
+        if (player.IsDead) return; // Don't do anything if we're dead. Introduces a bug when dying in midair, but whatever
 
         #region Camera
         // Control camera movement
@@ -219,7 +222,7 @@ public class FpsController : MonoBehaviourPun
         Vector3 moveDirection = forward + strafe;
         moveDirection *= speed;
 
-        if (player.isDead) // Don't allow movement input if dead, by overwriting input
+        if (player.IsDead) // Don't allow movement input if dead, by overwriting input
         {
             moveDirection = new Vector3();
         }
@@ -229,7 +232,7 @@ public class FpsController : MonoBehaviourPun
             fallingSpeed = -0.3f; // When on the ground we set a little downward speed otherwise the controller seems 
             // to 'bounce' on the ground and half the time doesn't consider itself grounded.
             // Go up if we're hitting jump.
-            if (!player.isDead && Input.GetKeyDown("space"))
+            if (!player.IsDead && Input.GetKeyDown("space"))
             {
                 fallingSpeed = jumpStrength;
             }
@@ -395,12 +398,13 @@ public class FpsController : MonoBehaviourPun
 
     public void Reset()
     {
+        bool charConWasEnabled = this.charCon.enabled;
         // Turn off the character controller before force-moving, or it'll just set us right back.
         this.charCon.enabled = false;
         Transform spawn = gm.GetPlayerSpawnLocation();
         this.transform.position = spawn.position;
         this.transform.rotation = spawn.rotation;
-        this.charCon.enabled = true;
+        this.charCon.enabled = charConWasEnabled;
     }
 
     // TODO yea all of this stuff should be on the player really
@@ -440,7 +444,7 @@ public class FpsController : MonoBehaviourPun
     /// <param name="position">Position at which the activation occurred, usually a raycast hit</param>
     void TryToActivate(GameObject go, Vector3 position)
     {
-        if (player.isDead) return;
+        if (player.IsDead) return;
         // Find an activatable
         Activatable act = go.GetComponent<Activatable>();
         if (!act) return;

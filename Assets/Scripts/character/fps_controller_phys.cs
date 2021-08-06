@@ -90,7 +90,7 @@ public class fps_controller_phys : MonoBehaviourPun
 
     bool PlayerCanMove()
     {
-        return !player.isDead;
+        return !player.IsDead;
     }
 
     bool CheckGround()
@@ -384,7 +384,7 @@ public class fps_controller_phys : MonoBehaviourPun
     /// <param name="position">Position at which the activation occurred, usually a raycast hit</param>
     void TryToActivate(GameObject go, Vector3 position)
     {
-        if (player.isDead) return;
+        if (player.IsDead) return;
         // Find an activatable and make sure it has a photonview
         Activatable act = go.GetComponent<Activatable>();
         if (act == null) return;

@@ -227,7 +227,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
                         int lInnocents = 0;
                         players.ForEach(delegate (Player p)
                         {
-                            if (p.isDead) return; // We don't care about dead people.
+                            if (p.IsDead) return; // We don't care about dead people.
                             if (p.Role.ID == 1) lInnocents++;
                             if (p.Role.ID == 2) lTraitors++;
                         });
@@ -440,7 +440,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         if (existingPlayer)
         {
             // Reset components on player.
-            existingPlayer.SendMessage("Reset");
+            existingPlayer.photonView.RPC("Reset", RpcTarget.All);
         }
         else
         {
@@ -471,8 +471,8 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
 
     public void OnEvent(EventData photonEvent)
     {
-        int eventCode = photonEvent.Code;
-        lm.Log(logSrc,$"Received Photon event code " + eventCode);
+        //int eventCode = photonEvent.Code;
+        //lm.Log(logSrc,$"Received Photon event code " + eventCode);
     }
 
     // Called by a client when destroying an item (eg, picking it up from the ground)

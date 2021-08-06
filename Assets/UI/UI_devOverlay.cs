@@ -45,7 +45,7 @@ public class UI_devOverlay : MonoBehaviour
         // Player info
         gm.players.ForEach(delegate (Player p)
         {
-            info += "[" + p.ID + ":" + p.nickname + "]\t" + p.Role.Name + "\toil/damage:" + p.oil + "/" + p.GetDamage() + "\t\tisDead:" + p.isDead + "\tready:" + p.isReady + "\n";
+            info += "[" + p.ID + ":" + p.nickname + "]\t" + p.Role.Name + "\toil/damage:" + p.oil + "/" + p.GetDamage() + "\t\tisDead:" + p.IsDead + "\tready:" + p.isReady + "\n";
         });
 
         info += "\n";

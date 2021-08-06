@@ -9,7 +9,7 @@ public class BodyPart : MonoBehaviour
     readonly string logSrc = "BodyPart";
 
     // Ref to our parent Player script
-    Player p;
+    public Player p;
     // The damage on this body part. Note, this is set by the Player and NOT here, as
     // the TakeDamage script below is usually called on other clients, hence the RPC.
     [SerializeField]
