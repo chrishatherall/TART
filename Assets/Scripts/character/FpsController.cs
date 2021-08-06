@@ -89,6 +89,10 @@ public class FpsController : MonoBehaviourPun
     // The audio source we use to emit sounds from this character
     private AudioSource audioSource;
 
+    // The parent of the held-item anchor we need to move up/down when crouching
+    public GameObject itemAnchorParent;
+    float itemAnchorParentHeight;
+
     // The text box shown below our cursor, for displaying information on pickups, activatables, etc
     public UnityEngine.UI.Text cursorTooltip;
 
@@ -139,6 +143,7 @@ public class FpsController : MonoBehaviourPun
 
         ccHeight = charCon.height;
         camHeight = CamWiggleObject.transform.localPosition.y;
+        itemAnchorParentHeight = itemAnchorParent.transform.localPosition.y;
     }
 
     // Update is called once per frame
@@ -187,6 +192,7 @@ public class FpsController : MonoBehaviourPun
             charCon.center = new Vector3(0f, charCon.height / 2, 0f);
             topOfHead.transform.localPosition = new Vector3(0f, charCon.height, 0f);
             CamWiggleObject.transform.localPosition = new Vector3(0f, camHeight / 2, CamWiggleObject.transform.localPosition.z);
+            itemAnchorParent.transform.localPosition = new Vector3(itemAnchorParent.transform.localPosition.x, itemAnchorParentHeight / 2, itemAnchorParent.transform.localPosition.z);
         }
         if (isCrouching && !Input.GetKey(KeyCode.LeftControl))
         {
@@ -199,6 +205,7 @@ public class FpsController : MonoBehaviourPun
                 charCon.height = ccHeight;
                 topOfHead.transform.localPosition = new Vector3(0f, charCon.height + 0.01f, 0f);
                 CamWiggleObject.transform.localPosition = new Vector3(0f, camHeight, CamWiggleObject.transform.localPosition.z);
+                itemAnchorParent.transform.localPosition = new Vector3(itemAnchorParent.transform.localPosition.x, itemAnchorParentHeight, itemAnchorParent.transform.localPosition.z);
             }
         }
         #endregion
