@@ -263,6 +263,13 @@ public class FpsController : MonoBehaviourPun
         {
             player.heldItem.SendMessage("Reload");
         }
+
+        // Switch mesh renderer on/off
+        if (Input.GetKeyDown("p"))
+        {
+            SkinnedMeshRenderer smr = GetComponentInChildren<SkinnedMeshRenderer>(includeInactive:true);
+            if (smr) smr.gameObject.SetActive(!smr.gameObject.activeSelf);
+        }
         #endregion
 
         #region Interaction
