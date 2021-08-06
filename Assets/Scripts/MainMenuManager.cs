@@ -32,6 +32,10 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
     [SerializeField]
     private Text feedbackText;
 
+    [Tooltip("The Ui Text to show the game version")]
+    [SerializeField]
+    private Text versionText;
+
     [Tooltip("The maximum number of players per room")]
 	[SerializeField]
 	private byte maxPlayersPerRoom = 4;
@@ -40,6 +44,10 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 	[SerializeField]
 	private Dropdown gamemodeDD;
 
+	[SerializeField]
+	Button joinBtn;
+	[SerializeField]
+	Button hostBtn;
 
 	/// <summary>
 	/// Keep track of the current process. Since connection is asynchronous and is based on several callbacks from Photon, 
@@ -70,6 +78,8 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 			PhotonNetwork.ConnectUsingSettings();
 			PhotonNetwork.GameVersion = this.gameVersion;
 		}
+
+		versionText.text = Application.version;
 	}
 
 	/// <summary>
@@ -136,6 +146,8 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
     public override void OnConnectedToMaster()
     {
 		Log("Connected to primary server");
+		hostBtn.interactable = true;
+		joinBtn.interactable = true;
     }
 
 
@@ -163,7 +175,8 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
     public override void OnDisconnected(DisconnectCause cause)
 	{
 		Log("Disconnected. " + cause.ToString());
-
+		hostBtn.interactable = false;
+		joinBtn.interactable = false;
 		// #Critical: we failed to connect or got disconnected. There is not much we can do. Typically, a UI system should be in place to let the user attemp to connect again.
 
 		controlPanel.SetActive(true);
