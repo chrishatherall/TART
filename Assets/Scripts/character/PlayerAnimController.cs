@@ -49,13 +49,17 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
     // Update is called once per frame
     void Update()
     {
-        if (photonView.IsMine && fpsController)
+        if (photonView.IsMine)
         {
-            // Pull details from the FpsController
-            frontBackMovement = fpsController.frontBackMovement;
-            leftRightMovement = fpsController.leftRightMovement;
-            isMoving = fpsController.isMoving;
-            isGrounded = fpsController.isGrounded;
+            if (fpsController)
+            {
+                // Pull details from the FpsController
+                frontBackMovement = fpsController.frontBackMovement;
+                leftRightMovement = fpsController.leftRightMovement;
+                isMoving = fpsController.isMoving;
+                isGrounded = fpsController.isGrounded;
+
+            }
 
             // TODO this should be pulled from the FpsController instead of directly
             if (Input.GetKeyDown("space"))
@@ -63,9 +67,10 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
                 animator.SetTrigger("triggerJumped");
             }
 
-            if (fpsController.player.heldItemScript)
+            // Set our IK targets
+            if (player.heldItemScript)
             {
-                rightHandIKObj = fpsController.player.heldItemScript.rightHandIKAnchor;
+                rightHandIKObj = player.heldItemScript.rightHandIKAnchor;
             } else
             {
                 rightHandIKObj = null;
