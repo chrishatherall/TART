@@ -126,7 +126,7 @@ public class FpsController : MonoBehaviourPun
         // Set rb dragger stuff
         fj = rbDragger.GetComponent<FixedJoint>();
 
-        if (!player || !charCon || !inventory)
+        if (!player || !charCon || !inventory || !cam || !CamWiggleObject)
         {
             lm.LogError(logSrc,"Missing components!");
         }
@@ -138,7 +138,7 @@ public class FpsController : MonoBehaviourPun
         Cursor.lockState = CursorLockMode.Locked;
 
         ccHeight = charCon.height;
-        camHeight = cam.transform.localPosition.y;
+        camHeight = CamWiggleObject.transform.localPosition.y;
     }
 
     // Update is called once per frame
@@ -184,22 +184,21 @@ public class FpsController : MonoBehaviourPun
         {
             isCrouching = true;
             charCon.height = ccHeight / 2;
-            charCon.center = new Vector3(0f, ccHeight / 2, 0f);
+            charCon.center = new Vector3(0f, charCon.height / 2, 0f);
             topOfHead.transform.localPosition = new Vector3(0f, charCon.height, 0f);
-            cam.transform.localPosition = new Vector3(0f, camHeight / 2, cam.transform.localPosition.z);
+            CamWiggleObject.transform.localPosition = new Vector3(0f, camHeight / 2, CamWiggleObject.transform.localPosition.z);
         }
         if (isCrouching && !Input.GetKey(KeyCode.LeftControl))
         {
             // check to see if we can uncrouch, by casting a ray up and seeing if it's clear
-            RaycastHit crouchHit;
-            bool canUncrouch = !Physics.Raycast(topOfHead.transform.position, Vector3.up, out crouchHit, ccHeight/2);//, layermask);
+            bool canUncrouch = !Physics.Raycast(topOfHead.transform.position, Vector3.up, out RaycastHit crouchHit, ccHeight/2, layermask);
             if (canUncrouch)
             {
                 isCrouching = false;
                 charCon.center = new Vector3(0f, ccHeight / 2, 0f);
                 charCon.height = ccHeight;
-                topOfHead.transform.localPosition = new Vector3(0f, charCon.height, 0f);
-                cam.transform.localPosition = new Vector3(0f, camHeight, cam.transform.localPosition.z);
+                topOfHead.transform.localPosition = new Vector3(0f, charCon.height + 0.01f, 0f);
+                CamWiggleObject.transform.localPosition = new Vector3(0f, camHeight, CamWiggleObject.transform.localPosition.z);
             }
         }
         #endregion
@@ -221,6 +220,9 @@ public class FpsController : MonoBehaviourPun
         Vector3 forward = frontBackMovement * transform.forward;
         Vector3 moveDirection = forward + strafe;
         moveDirection *= speed;
+
+        // Half speed if crouching or shift-walking
+        if (isCrouching || Input.GetKey(KeyCode.LeftShift)) moveDirection *= 0.5f;
 
         if (player.IsDead) // Don't allow movement input if dead, by overwriting input
         {
