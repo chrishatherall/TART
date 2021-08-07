@@ -50,6 +50,10 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     Transform itemAnchorParent;
     Vector3 itemAnchorParentPos;
 
+    AudioSource audioSrc;
+    [SerializeField]
+    AudioClip healSound;
+
     // Public access for the role
     public TartRole Role { get => _role; }
 
@@ -93,6 +97,10 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         }
     }
 
+    // Healing
+    public bool isHealing;
+    float sSinceLastHeal = 0f;
+
     void Start()
     {
         // GM might not be ready yet.
@@ -107,6 +115,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
         // Find our body parts
         bodyParts = GetComponentsInChildren<BodyPart>();
+
+        // Find our audio source
+        audioSrc = GetComponent<AudioSource>();
 
         // Set our standing head height to whatever it is when we spawned
         standingHeadPos = topOfHead.transform.localPosition;
@@ -216,6 +227,31 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         }
     }
 
+    public void Heal(int amount)
+    {
+        // Run loop once for each heal amount
+        int healedParts = 0;
+        for (int i = 0; i < amount; i++)
+        {
+            // Get a bodypart with damage
+            BodyPart bp = bodyParts.FirstOrDefault(bp => bp.Damage > 0);
+            if (!bp) break;
+            // Reduce damage by 1
+            bp.Damage--;
+            healedParts++;
+        }
+
+        // Do visuals if we healed anything
+        if (healedParts > 0) photonView.RPC("DoHealVisuals", RpcTarget.All);
+    }
+
+    [PunRPC]
+    public void DoHealVisuals()
+    {
+        // Play sound
+        if (audioSrc && healSound) audioSrc.PlayOneShot(healSound);
+    }
+
     // Ticks happen once a second. Why though? Is it so we reduce network sync traffic?
     // It would be cleaner to ignore this and round values for the UI.
     private float msSinceLastTick = 0;
@@ -223,6 +259,20 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     {
         if (!photonView.IsMine) return;
 
+        // Track healing time
+        if (isHealing && !IsDead)
+        {
+            sSinceLastHeal += Time.deltaTime;
+            if (sSinceLastHeal > 1)
+            {
+                Heal(5);
+                sSinceLastHeal = 0f;
+            }
+        } else {
+            sSinceLastHeal = 0f;
+        }
+
+        // Track DOT
         msSinceLastTick += Time.deltaTime;
         if (msSinceLastTick > 1) // One second
         {

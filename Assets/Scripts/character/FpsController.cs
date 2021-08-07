@@ -217,7 +217,7 @@ public class FpsController : MonoBehaviourPun
         // Half speed if crouching or shift-walking
         if (p.IsCrouching || Input.GetKey(KeyCode.LeftShift)) moveDirection *= 0.5f;
 
-        if (p.IsDead) // Don't allow movement input if dead, by overwriting input
+        if (p.IsDead || p.isHealing) // Don't allow movement input if dead or healing, by overwriting input
         {
             moveDirection = new Vector3();
         }
@@ -265,6 +265,9 @@ public class FpsController : MonoBehaviourPun
             SkinnedMeshRenderer smr = GetComponentInChildren<SkinnedMeshRenderer>(includeInactive:true);
             if (smr) smr.gameObject.SetActive(!smr.gameObject.activeSelf);
         }
+
+        // healing
+        p.isHealing = Input.GetKey("h");
         #endregion
 
         #region Interaction
