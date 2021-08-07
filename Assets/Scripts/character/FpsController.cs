@@ -55,8 +55,6 @@ public class FpsController : MonoBehaviourPun
     // Strength of a jump.
     [SerializeField]
     float jumpStrength = 6f;
-    // Is character currently crouching
-    public bool isCrouching = false;
 
     // Create a layermask which ignores layer 7, so we dont constantly activate ourselves
     int layermask = ~(1 << 7);
@@ -67,7 +65,7 @@ public class FpsController : MonoBehaviourPun
     private Camera cam;
     float camHeight;
     // Reference to our player script
-    public Player player;
+    public Player p;
 
     // The last raycast hit of our camera
     public RaycastHit lastHit;
@@ -77,21 +75,14 @@ public class FpsController : MonoBehaviourPun
     public float frontBackMovement;
     public float leftRightMovement;
     public bool isMoving;
-
+    
     // Ref to the character controller.
     CharacterController charCon;
     float ccHeight;
     // Ref to the player inventory
     Inventory inventory;
-    // Ref to the top of our head, for determining if we can uncrouch
-    [SerializeField]
-    GameObject topOfHead;
     // The audio source we use to emit sounds from this character
     private AudioSource audioSource;
-
-    // The parent of the held-item anchor we need to move up/down when crouching
-    public GameObject itemAnchorParent;
-    float itemAnchorParentHeight;
 
     // The text box shown below our cursor, for displaying information on pickups, activatables, etc
     public UnityEngine.UI.Text cursorTooltip;
@@ -118,7 +109,7 @@ public class FpsController : MonoBehaviourPun
     void Awake()
     {
         // Find player script
-        player = GetComponent<Player>();
+        p = GetComponent<Player>();
         // Find character controller
         charCon = GetComponent<CharacterController>();
         // Find the player inventory
@@ -130,7 +121,7 @@ public class FpsController : MonoBehaviourPun
         // Set rb dragger stuff
         fj = rbDragger.GetComponent<FixedJoint>();
 
-        if (!player || !charCon || !inventory || !cam || !CamWiggleObject)
+        if (!p || !charCon || !inventory || !cam || !CamWiggleObject)
         {
             lm.LogError(logSrc,"Missing components!");
         }
@@ -143,13 +134,12 @@ public class FpsController : MonoBehaviourPun
 
         ccHeight = charCon.height;
         camHeight = CamWiggleObject.transform.localPosition.y;
-        itemAnchorParentHeight = itemAnchorParent.transform.localPosition.y;
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (player.IsDead) return; // Don't do anything if we're dead. Introduces a bug when dying in midair, but whatever
+        if (p.IsDead) return; // Don't do anything if we're dead. Introduces a bug when dying in midair, but whatever
 
         #region Camera
         // Control camera movement
@@ -185,27 +175,23 @@ public class FpsController : MonoBehaviourPun
         #endregion
 
         #region Crouching
-        if (!isCrouching && Input.GetKey(KeyCode.LeftControl))
+        if (!p.IsCrouching && Input.GetKey(KeyCode.LeftControl))
         {
-            isCrouching = true;
+            p.IsCrouching = true;
             charCon.height = ccHeight / 2;
             charCon.center = new Vector3(0f, charCon.height / 2, 0f);
-            topOfHead.transform.localPosition = new Vector3(0f, charCon.height, 0f);
             CamWiggleObject.transform.localPosition = new Vector3(0f, camHeight / 2, CamWiggleObject.transform.localPosition.z);
-            itemAnchorParent.transform.localPosition = new Vector3(itemAnchorParent.transform.localPosition.x, itemAnchorParentHeight / 2, itemAnchorParent.transform.localPosition.z);
         }
-        if (isCrouching && !Input.GetKey(KeyCode.LeftControl))
+        if (p.IsCrouching && !Input.GetKey(KeyCode.LeftControl))
         {
             // check to see if we can uncrouch, by casting a ray up and seeing if it's clear
-            bool canUncrouch = !Physics.Raycast(topOfHead.transform.position, Vector3.up, out RaycastHit crouchHit, ccHeight/2, layermask);
+            bool canUncrouch = !Physics.Raycast(p.topOfHead.transform.position, Vector3.up, out RaycastHit crouchHit, ccHeight/2, layermask);
             if (canUncrouch)
             {
-                isCrouching = false;
+                p.IsCrouching = false;
                 charCon.center = new Vector3(0f, ccHeight / 2, 0f);
                 charCon.height = ccHeight;
-                topOfHead.transform.localPosition = new Vector3(0f, charCon.height + 0.01f, 0f);
                 CamWiggleObject.transform.localPosition = new Vector3(0f, camHeight, CamWiggleObject.transform.localPosition.z);
-                itemAnchorParent.transform.localPosition = new Vector3(itemAnchorParent.transform.localPosition.x, itemAnchorParentHeight, itemAnchorParent.transform.localPosition.z);
             }
         }
         #endregion
@@ -229,9 +215,9 @@ public class FpsController : MonoBehaviourPun
         moveDirection *= speed;
 
         // Half speed if crouching or shift-walking
-        if (isCrouching || Input.GetKey(KeyCode.LeftShift)) moveDirection *= 0.5f;
+        if (p.IsCrouching || Input.GetKey(KeyCode.LeftShift)) moveDirection *= 0.5f;
 
-        if (player.IsDead) // Don't allow movement input if dead, by overwriting input
+        if (p.IsDead) // Don't allow movement input if dead, by overwriting input
         {
             moveDirection = new Vector3();
         }
@@ -241,7 +227,7 @@ public class FpsController : MonoBehaviourPun
             fallingSpeed = -0.3f; // When on the ground we set a little downward speed otherwise the controller seems 
             // to 'bounce' on the ground and half the time doesn't consider itself grounded.
             // Go up if we're hitting jump.
-            if (!player.IsDead && Input.GetKeyDown("space"))
+            if (!p.IsDead && Input.GetKeyDown("space"))
             {
                 fallingSpeed = jumpStrength;
             }
@@ -262,15 +248,15 @@ public class FpsController : MonoBehaviourPun
 
         #region Key-specific events
         // Throw objects
-        if (Input.GetKeyDown("g") && player.heldItem)
+        if (Input.GetKeyDown("g") && p.heldItem)
         {
             TryDropHeldItem();
         }
 
         // Reload
-        if (Input.GetKeyDown("r") && player.heldItem)
+        if (Input.GetKeyDown("r") && p.heldItem)
         {
-            player.heldItem.SendMessage("Reload");
+            p.heldItem.SendMessage("Reload");
         }
 
         // Switch mesh renderer on/off
@@ -293,7 +279,7 @@ public class FpsController : MonoBehaviourPun
         {
             // Set our last hit to this point
             lastHit = hit;
-            player.aim = hit.point;
+            p.aim = hit.point;
 
             // We can't pickup or activate anything beyond our range.
             if (Vector3.Distance(rayOrigin, hit.point) < activateRange)
@@ -351,9 +337,9 @@ public class FpsController : MonoBehaviourPun
 
         #region Misc
         // Tell held item about some stuff
-        if (player.heldItemScript)
+        if (p.heldItemScript)
         {
-            player.heldItemScript.SetValues(rayOrigin, Input.GetButton("Fire1"));
+            p.heldItemScript.SetValues(rayOrigin, Input.GetButton("Fire1"));
         }
         #endregion
     }
@@ -362,7 +348,7 @@ public class FpsController : MonoBehaviourPun
     void TryPickupItem (GameObject item)
     {
         // If the player is already holding an item, drop it before picking up the new one
-        if (player.heldItem)
+        if (p.heldItem)
         {
             // TODO needs to be run on server?? Or we could run it here and set ownership to the scene
             TryDropHeldItem();
@@ -375,10 +361,10 @@ public class FpsController : MonoBehaviourPun
 
         if (!item || !PV || !pickup)
         {
-            lm.LogError(logSrc,$"player {player.ID} tried to pick up missing item");
+            lm.LogError(logSrc,$"player {p.ID} tried to pick up missing item");
             return;
         }
-        lm.Log(logSrc,$"player {player.ID} is picking up {pickup.nickname}");
+        lm.Log(logSrc,$"player {p.ID} is picking up {pickup.nickname}");
 
         // Play sound if the pickup has one
         if (pickup.pickupSound)
@@ -397,7 +383,7 @@ public class FpsController : MonoBehaviourPun
         }
 
         // Create new item in our hands
-        GameObject newItem = PhotonNetwork.Instantiate(pickup.prefabHeld.name, player.itemAnchor.transform.position, Quaternion.identity);
+        GameObject newItem = PhotonNetwork.Instantiate(pickup.prefabHeld.name, p.itemAnchor.transform.position, Quaternion.identity);
 
         // Server should destroy the original
         GameManager.gm.photonView.RPC("DestroyItem", RpcTarget.MasterClient, PV.ViewID);
@@ -405,8 +391,8 @@ public class FpsController : MonoBehaviourPun
         // Setup the gun and tell other players to
         // TODO assumes it's a gun
         // TODO items with an audio source should be set to 2d spatial blend so the sound doesn't favour one speaker (annoying)
-        newItem.GetComponent<Gun>().Setup(player.ID);
-        newItem.GetPhotonView().RPC("Setup", RpcTarget.Others, player.ID);
+        newItem.GetComponent<Gun>().Setup(p.ID);
+        newItem.GetPhotonView().RPC("Setup", RpcTarget.Others, p.ID);
 
         newItem.layer = 7;
 
@@ -429,24 +415,24 @@ public class FpsController : MonoBehaviourPun
     // Drops our held item into the world. Called when we press G or on death
     public void TryDropHeldItem ()
     {
-        if (!player.heldItem) return;
-        TryDropItem(player.heldItemScript.worldPrefab.name);
+        if (!p.heldItem) return;
+        TryDropItem(p.heldItemScript.worldPrefab.name);
         // Destroy the item in our hands.
-        PhotonNetwork.Destroy(player.heldItem);
+        PhotonNetwork.Destroy(p.heldItem);
     }
 
     // Drops an item into the world
     void TryDropItem (string prefabName)
     {
         // Tell server we're dropping our held item.
-        photonView.RPC("RpcDropItem", RpcTarget.MasterClient, player.heldItemScript.worldPrefab.name);
+        photonView.RPC("RpcDropItem", RpcTarget.MasterClient, p.heldItemScript.worldPrefab.name);
     }
 
     [PunRPC]
     void RpcDropItem (string prefabName)
     {
         if (!PhotonNetwork.IsMasterClient) return;
-        lm.Log(logSrc,$"Player {player.ID} dropping item {prefabName}");
+        lm.Log(logSrc,$"Player {p.ID} dropping item {prefabName}");
         // Create item being dropped
         GameObject go = PhotonNetwork.InstantiateRoomObject(prefabName, cam.transform.position, transform.rotation);
         // Add some force so it moves away from the player who dropped it
@@ -460,7 +446,7 @@ public class FpsController : MonoBehaviourPun
     /// <param name="position">Position at which the activation occurred, usually a raycast hit</param>
     void TryToActivate(GameObject go, Vector3 position)
     {
-        if (player.IsDead) return;
+        if (p.IsDead) return;
         // Find an activatable
         Activatable act = go.GetComponent<Activatable>();
         if (!act) return;

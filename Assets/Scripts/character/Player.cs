@@ -33,6 +33,11 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     // Flag for bots
     public bool isBot;
 
+    // Movement
+    bool _isCrouching;
+    public GameObject topOfHead;
+    Vector3 standingHeadPos;
+
     // Our body parts
     BodyPart[] bodyParts;
 
@@ -41,35 +46,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     public HeldItem heldItemScript;
     // The item anchor gameobject
     public GameObject itemAnchor;
-
-
-    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
-    {
-        // TODO sync bodypart damage so we can create damage visuals on specific body parts
-
-        if (stream.IsWriting)
-        {
-            // We own this player: send the others our data
-            stream.SendNext(oil);
-            stream.SendNext(maxOil);
-            stream.SendNext(IsDead);
-            stream.SendNext(isReady);
-            stream.SendNext(nickname);
-            stream.SendNext(actorNumber);
-            stream.SendNext(aim);
-        }
-        else
-        {
-            // Network player, receive data
-            this.oil = (int)stream.ReceiveNext();
-            this.maxOil = (int)stream.ReceiveNext();
-            this.IsDead = (bool)stream.ReceiveNext();
-            this.isReady = (bool)stream.ReceiveNext();
-            this.nickname = (string)stream.ReceiveNext();
-            this.actorNumber = (int)stream.ReceiveNext();
-            this.aim = (Vector3)stream.ReceiveNext();
-        }
-    }
+    // The parent of the held-item anchor we need to move up/down when crouching
+    Transform itemAnchorParent;
+    Vector3 itemAnchorParentPos;
 
     // Public access for the role
     public TartRole Role { get => _role; }
@@ -88,6 +67,32 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         }
     }
 
+    public bool IsCrouching { 
+        get => _isCrouching;
+        set
+        {
+            // Crouch or uncrouch if the value has changed
+            if (_isCrouching != value)
+            {
+                if (value)
+                {
+                    _isCrouching = true;
+                    // Lower the top of our head to crouching height (which is half)
+                    topOfHead.transform.localPosition = standingHeadPos * 0.5f;
+                    // Lower our item anchor to represent our arms dropping
+                    itemAnchorParent.transform.localPosition = itemAnchorParentPos * 0.5f;
+                } else {
+                    _isCrouching = false;
+                    // Raise the top of our head to standing height
+                    topOfHead.transform.localPosition = standingHeadPos;
+                    // Raise our item anchor
+                    itemAnchorParent.transform.localPosition = itemAnchorParentPos;
+                }
+            }
+            
+        }
+    }
+
     void Start()
     {
         // GM might not be ready yet.
@@ -102,6 +107,12 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
         // Find our body parts
         bodyParts = GetComponentsInChildren<BodyPart>();
+
+        // Set our standing head height to whatever it is when we spawned
+        standingHeadPos = topOfHead.transform.localPosition;
+        // Set our standing itemAnchorHeight
+        itemAnchorParent = itemAnchor.transform.parent;
+        itemAnchorParentPos = itemAnchorParent.transform.localPosition;
 
         // Set as ready, and apply nickname when the local player has loaded
         if (photonView.IsMine)
@@ -126,6 +137,36 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
         // Parent self to gm's spawned-players object for cleanliness
         this.transform.parent = gm.playerSpawnParent;
+    }
+
+    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    {
+        // TODO sync bodypart damage so we can create damage visuals on specific body parts
+
+        if (stream.IsWriting)
+        {
+            // We own this player: send the others our data
+            stream.SendNext(oil);
+            stream.SendNext(maxOil);
+            stream.SendNext(IsDead);
+            stream.SendNext(IsCrouching);
+            stream.SendNext(isReady);
+            stream.SendNext(nickname);
+            stream.SendNext(actorNumber);
+            stream.SendNext(aim);
+        }
+        else
+        {
+            // Network player, receive data
+            this.oil = (int)stream.ReceiveNext();
+            this.maxOil = (int)stream.ReceiveNext();
+            this.IsDead = (bool)stream.ReceiveNext();
+            this.IsCrouching = (bool)stream.ReceiveNext();
+            this.isReady = (bool)stream.ReceiveNext();
+            this.nickname = (string)stream.ReceiveNext();
+            this.actorNumber = (int)stream.ReceiveNext();
+            this.aim = (Vector3)stream.ReceiveNext();
+        }
     }
 
     [PunRPC]

@@ -59,7 +59,7 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
                 leftRightMovement = fpsController.leftRightMovement;
                 isMoving = fpsController.isMoving;
                 isGrounded = fpsController.isGrounded;
-                isCrouching = fpsController.isCrouching;
+                isCrouching = player.IsCrouching;
             }
 
             // TODO this should be pulled from the FpsController instead of directly

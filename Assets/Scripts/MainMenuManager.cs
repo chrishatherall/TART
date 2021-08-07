@@ -124,6 +124,9 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 		// hide the Play button for visual consistency
 		controlPanel.SetActive(false);
 
+		// Set room code to uppercase
+		roomCodeTextbox.text = roomCodeTextbox.text.ToUpper();
+
 		if (PhotonNetwork.IsConnected)
 		{
 			Log("Joining Room...");
