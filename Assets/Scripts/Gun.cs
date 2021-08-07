@@ -87,13 +87,12 @@ public class Gun : MonoBehaviourPun
         owner.heldItem = this.gameObject;
         owner.heldItemScript = this.GetComponent<HeldItem>();
 
-        fpsController = GetComponentInParent<FpsController>();
-        cam = fpsController.playerCamera;
-
         // If we're setting up for ourselves, set audio emitter to 2d so the gun firing noise 
         // doesn't annoyingly favour one ear.
         if (photonView.IsMine)
         {
+            fpsController = GetComponentInParent<FpsController>();
+            cam = fpsController.playerCamera;
             GetComponent<AudioSource>().spatialBlend = 0f;
         }
     }

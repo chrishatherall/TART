@@ -67,15 +67,15 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
             {
                 animator.SetTrigger("triggerJumped");
             }
+        }
 
-            // Set our IK targets
-            if (player.heldItemScript)
-            {
-                rightHandIKObj = player.heldItemScript.rightHandIKAnchor;
-            } else
-            {
-                rightHandIKObj = null;
-            }
+        // Set our IK targets
+        if (player.heldItemScript)
+        {
+            rightHandIKObj = player.heldItemScript.rightHandIKAnchor;
+        } else
+        {
+            rightHandIKObj = null;
         }
 
         // Set details on animator
