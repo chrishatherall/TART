@@ -26,6 +26,7 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
     float leftRightMovement; // 1 = full right, -1 = full left
     bool isMoving;           // false if idle, true if moving
     bool isGrounded;         // true if on floor
+    bool isCrouching;        // true if crouching
     
     // Component references
     FpsController fpsController;
@@ -58,7 +59,7 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
                 leftRightMovement = fpsController.leftRightMovement;
                 isMoving = fpsController.isMoving;
                 isGrounded = fpsController.isGrounded;
-
+                isCrouching = fpsController.isCrouching;
             }
 
             // TODO this should be pulled from the FpsController instead of directly
@@ -82,6 +83,7 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
         animator.SetFloat("leftRightMovement", leftRightMovement);
         animator.SetBool("isMoving", isMoving);
         animator.SetBool("isGrounded", isGrounded);
+        animator.SetBool("isCrouching", isCrouching);
 
         // Rotate item anchor
         itemAnchorParent.transform.LookAt(player.aim);
@@ -129,6 +131,7 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
             stream.SendNext(leftRightMovement);
             stream.SendNext(isMoving);
             stream.SendNext(isGrounded);
+            stream.SendNext(isCrouching);
         }
         else
         {
@@ -137,6 +140,7 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
             this.leftRightMovement = (float)stream.ReceiveNext();
             this.isMoving = (bool)stream.ReceiveNext();
             this.isGrounded = (bool)stream.ReceiveNext();
+            this.isCrouching = (bool)stream.ReceiveNext();
         }
     }
 }

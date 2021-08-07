@@ -56,7 +56,7 @@ public class FpsController : MonoBehaviourPun
     [SerializeField]
     float jumpStrength = 6f;
     // Is character currently crouching
-    bool isCrouching = false;
+    public bool isCrouching = false;
 
     // Create a layermask which ignores layer 7, so we dont constantly activate ourselves
     int layermask = ~(1 << 7);
