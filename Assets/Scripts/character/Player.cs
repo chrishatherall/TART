@@ -7,6 +7,9 @@ using tart;
 using static GameManager;
 using static LogManager;
 
+// Delegate signature for empty events // TODO no idea if I actually need this
+public delegate void EmptyEvent();
+
 public class Player : MonoBehaviourPunCallbacks, IPunObservable
 {
     readonly string logSrc = "Player";
@@ -37,6 +40,14 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     bool _isCrouching;
     public GameObject topOfHead;
     Vector3 standingHeadPos;
+    // Movement values for animation controller
+    public bool isGrounded;
+    public float frontBackMovement;
+    public float leftRightMovement;
+    public bool isMoving;
+
+    // Jump event
+    public event EmptyEvent OnJump;
 
     // Our body parts
     BodyPart[] bodyParts;
@@ -165,6 +176,11 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             stream.SendNext(nickname);
             stream.SendNext(actorNumber);
             stream.SendNext(aim);
+
+            stream.SendNext(frontBackMovement);
+            stream.SendNext(leftRightMovement);
+            stream.SendNext(isMoving);
+            stream.SendNext(isGrounded);
         }
         else
         {
@@ -177,6 +193,11 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             this.nickname = (string)stream.ReceiveNext();
             this.actorNumber = (int)stream.ReceiveNext();
             this.aim = (Vector3)stream.ReceiveNext();
+
+            this.frontBackMovement = (float)stream.ReceiveNext();
+            this.leftRightMovement = (float)stream.ReceiveNext();
+            this.isMoving = (bool)stream.ReceiveNext();
+            this.isGrounded = (bool)stream.ReceiveNext();
         }
     }
 
@@ -205,7 +226,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     public void TakeDamage(int dmg, string bodyPartName)
     {
         // Don't deal with damage if we don't own this player
-        if (!photonView.IsMine) return;
+        //if (!photonView.IsMine) return; // TEMPORARILY do this on all clients for the visuals, need proper BodyPart syncing
 
         // Can't take more damage if we're dead
         if (IsDead) return;
@@ -243,6 +264,14 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
         // Do visuals if we healed anything
         if (healedParts > 0) photonView.RPC("DoHealVisuals", RpcTarget.All);
+    }
+
+    // Called on all clients by the fpscontroller
+    [PunRPC]
+    public void Jump()
+    {
+        // Invoke the jump event
+        OnJump.Invoke();
     }
 
     [PunRPC]

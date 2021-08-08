@@ -69,12 +69,6 @@ public class FpsController : MonoBehaviourPun
 
     // The last raycast hit of our camera
     public RaycastHit lastHit;
-
-    // Movement values for animation controller
-    public bool isGrounded;
-    public float frontBackMovement;
-    public float leftRightMovement;
-    public bool isMoving;
     
     // Ref to the character controller.
     CharacterController charCon;
@@ -201,16 +195,16 @@ public class FpsController : MonoBehaviourPun
         cursorTooltip.text = "";
 
         // Set grounded flag for the animation controller
-        isGrounded = charCon.isGrounded;
+        p.isGrounded = charCon.isGrounded;
 
         // Get input values 
-        frontBackMovement = Input.GetAxis("Vertical");
-        leftRightMovement = Input.GetAxis("Horizontal");
-        isMoving = frontBackMovement != 0 || leftRightMovement != 0; // We're moving if there is any input  TODO maybe add jump
+        p.frontBackMovement = Input.GetAxis("Vertical");
+        p.leftRightMovement = Input.GetAxis("Horizontal");
+        p.isMoving = p.frontBackMovement != 0 || p.leftRightMovement != 0; // We're moving if there is any input  TODO maybe add jump
 
         // Get forward/strafe direction
-        Vector3 strafe = leftRightMovement * transform.right;
-        Vector3 forward = frontBackMovement * transform.forward;
+        Vector3 strafe = p.leftRightMovement * transform.right;
+        Vector3 forward = p.frontBackMovement * transform.forward;
         Vector3 moveDirection = forward + strafe;
         moveDirection *= speed;
 
@@ -229,6 +223,7 @@ public class FpsController : MonoBehaviourPun
             // Go up if we're hitting jump.
             if (!p.IsDead && Input.GetKeyDown("space"))
             {
+                p.photonView.RPC("Jump", RpcTarget.All);
                 fallingSpeed = jumpStrength;
             }
         }

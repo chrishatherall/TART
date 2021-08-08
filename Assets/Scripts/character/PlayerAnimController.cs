@@ -6,7 +6,7 @@ using static LogManager;
 
 // Pulls movement details from the FpsController, syncs those values to the network, and passes them to the animator
 
-public class PlayerAnimController : MonoBehaviourPun, IPunObservable
+public class PlayerAnimController : MonoBehaviour
 {
     readonly string logSrc = "PLAYER_ANIM";
 
@@ -20,86 +20,62 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
     // roughly at the place we're looking
     [SerializeField]
     GameObject itemAnchorParent;
-
-    // Animation parameters
-    float frontBackMovement; // 1 = full forwards, -1 = full backwards
-    float leftRightMovement; // 1 = full right, -1 = full left
-    bool isMoving;           // false if idle, true if moving
-    bool isGrounded;         // true if on floor
-    bool isCrouching;        // true if crouching
-    
+  
     // Component references
-    FpsController fpsController;
     Animator animator;
-    Player player;
+    Player p;
 
     public void Start()
     {
-        fpsController = GetComponent<FpsController>();
         animator = GetComponent<Animator>();
-        player = GetComponent<Player>();
+        p = GetComponent<Player>();
 
-        if (!animator || !player)
+        if (!animator || !p)
         {
             // Turn this component off if we can't find the required components
             lm.LogError(logSrc,"Could not find required components");
             this.enabled = false;
         }
+
+        // Set jump trigger on Player event
+        p.OnJump += () => animator.SetTrigger("triggerJumped");
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (photonView.IsMine)
-        {
-            if (fpsController)
-            {
-                // Pull details from the FpsController
-                frontBackMovement = fpsController.frontBackMovement;
-                leftRightMovement = fpsController.leftRightMovement;
-                isMoving = fpsController.isMoving;
-                isGrounded = fpsController.isGrounded;
-                isCrouching = player.IsCrouching;
-            }
-
-            // TODO this should be pulled from the FpsController instead of directly
-            if (Input.GetKeyDown("space"))
-            {
-                animator.SetTrigger("triggerJumped");
-            }
-        }
 
         // Set our IK targets
-        if (player.heldItemScript)
+        if (p.heldItemScript)
         {
-            rightHandIKObj = player.heldItemScript.rightHandIKAnchor;
+            rightHandIKObj = p.heldItemScript.rightHandIKAnchor;
         } else
         {
             rightHandIKObj = null;
         }
 
         // Set details on animator
-        animator.SetFloat("frontBackMovement", frontBackMovement);
-        animator.SetFloat("leftRightMovement", leftRightMovement);
-        animator.SetBool("isMoving", isMoving);
-        animator.SetBool("isGrounded", isGrounded);
-        animator.SetBool("isCrouching", isCrouching);
+        animator.SetFloat("frontBackMovement", p.frontBackMovement);
+        animator.SetFloat("leftRightMovement", p.leftRightMovement);
+        animator.SetBool("isMoving", p.isMoving);
+        animator.SetBool("isGrounded", p.isGrounded);
+        animator.SetBool("isCrouching", p.IsCrouching);
 
         // Rotate item anchor
-        itemAnchorParent.transform.LookAt(player.aim);
+        itemAnchorParent.transform.LookAt(p.aim);
 
     }
 
-    // Callback for calculating IK
+    // Callback for calculating IK (called by Animator)
     void OnAnimatorIK()
     {
         if (!animator) return;
 
-        //Head IK
+        // Head IK
         if (lookPos != null)
         {
             animator.SetLookAtWeight(1);
-            animator.SetLookAtPosition(player.aim);
+            animator.SetLookAtPosition(p.aim);
         }
         else
         {
@@ -121,26 +97,4 @@ public class PlayerAnimController : MonoBehaviourPun, IPunObservable
         }
     }
 
-    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
-    {
-        // TODO not syncing jump
-        if (stream.IsWriting)
-        {
-            // We own this player: send the others our data
-            stream.SendNext(frontBackMovement);
-            stream.SendNext(leftRightMovement);
-            stream.SendNext(isMoving);
-            stream.SendNext(isGrounded);
-            stream.SendNext(isCrouching);
-        }
-        else
-        {
-            // Network player, receive data
-            this.frontBackMovement = (float)stream.ReceiveNext();
-            this.leftRightMovement = (float)stream.ReceiveNext();
-            this.isMoving = (bool)stream.ReceiveNext();
-            this.isGrounded = (bool)stream.ReceiveNext();
-            this.isCrouching = (bool)stream.ReceiveNext();
-        }
-    }
 }
