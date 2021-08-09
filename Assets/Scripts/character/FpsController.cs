@@ -195,12 +195,15 @@ public class FpsController : MonoBehaviourPun
         cursorTooltip.text = "";
 
         // Set grounded flag for the animation controller
-        p.isGrounded = charCon.isGrounded;
+        p.IsGrounded = charCon.isGrounded;
 
         // Get input values 
-        p.frontBackMovement = Input.GetAxis("Vertical");
+        p.frontBackMovement = Input.GetAxis("Vertical"); // NOTE These values are lerped!
         p.leftRightMovement = Input.GetAxis("Horizontal");
-        p.isMoving = p.frontBackMovement != 0 || p.leftRightMovement != 0; // We're moving if there is any input  TODO maybe add jump
+        p.isMoving = p.frontBackMovement != 0 || p.leftRightMovement != 0; // We're moving if there is any input
+
+        // TODO Test for more snappy footsteps, could use for input!
+        p.isMoving = Input.GetKey("w") || Input.GetKey("a") || Input.GetKey("s") || Input.GetKey("d");
 
         // Get forward/strafe direction
         Vector3 strafe = p.leftRightMovement * transform.right;
@@ -209,7 +212,15 @@ public class FpsController : MonoBehaviourPun
         moveDirection *= speed;
 
         // Half speed if crouching or shift-walking
-        if (p.IsCrouching || Input.GetKey(KeyCode.LeftShift)) moveDirection *= 0.5f;
+        if (p.IsCrouching || Input.GetKey(KeyCode.LeftShift))
+        {
+            p.isRunning = false;
+            moveDirection *= 0.5f;
+        } else
+        {
+            // If not crouch/shiftwalking but still moving, we're running
+            p.isRunning = p.isMoving;
+        }
 
         if (p.IsDead || p.isHealing) // Don't allow movement input if dead or healing, by overwriting input
         {

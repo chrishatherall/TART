@@ -37,14 +37,22 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     public bool isBot;
 
     // Movement
-    bool _isCrouching;
     public GameObject topOfHead;
     Vector3 standingHeadPos;
     // Movement values for animation controller
-    public bool isGrounded;
+    bool _isGrounded;
     public float frontBackMovement;
     public float leftRightMovement;
+    bool _isCrouching;
     public bool isMoving;
+    public bool isRunning;
+
+    // Footsteps
+    [SerializeField]
+    float footstepInterval = 0.5f; // Time between footsteps
+    float sLastFootstep; // Seconds since last footstep
+    [SerializeField]
+    float fFootstepVolume = 0.7f;
 
     // Jump event
     public event EmptyEvent OnJump;
@@ -105,6 +113,16 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
                 }
             }
             
+        }
+    }
+
+    public bool IsGrounded { 
+        get => _isGrounded;
+        set
+        {
+            // If the value changed and we're now grounded, do footstep
+            if (_isGrounded != value && value) DoFootstep();
+            _isGrounded = value;
         }
     }
 
@@ -180,7 +198,8 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             stream.SendNext(frontBackMovement);
             stream.SendNext(leftRightMovement);
             stream.SendNext(isMoving);
-            stream.SendNext(isGrounded);
+            stream.SendNext(isRunning);
+            stream.SendNext(IsGrounded);
         }
         else
         {
@@ -197,7 +216,8 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             this.frontBackMovement = (float)stream.ReceiveNext();
             this.leftRightMovement = (float)stream.ReceiveNext();
             this.isMoving = (bool)stream.ReceiveNext();
-            this.isGrounded = (bool)stream.ReceiveNext();
+            this.isRunning = (bool)stream.ReceiveNext();
+            this.IsGrounded = (bool)stream.ReceiveNext();
         }
     }
 
@@ -266,6 +286,14 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         if (healedParts > 0) photonView.RPC("DoHealVisuals", RpcTarget.All);
     }
 
+    void DoFootstep()
+    {
+        // Cast a ray down at the thing under our feet
+        bool hit = Physics.Raycast(this.transform.position, Vector3.down, out RaycastHit footstepHit, 1f);
+        if (!hit) return;
+        audioSrc.PlayOneShot(gm.GetFootstepByMaterial(footstepHit.collider.material), fFootstepVolume);
+    }
+
     // Called on all clients by the fpscontroller
     [PunRPC]
     public void Jump()
@@ -286,6 +314,20 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     private float msSinceLastTick = 0;
     public void Update()
     {
+        // Footsteps
+        if (IsGrounded && isRunning)
+        {
+            sLastFootstep += Time.deltaTime;
+            if (sLastFootstep > footstepInterval)
+            {
+                sLastFootstep = 0f;
+                DoFootstep();
+            }
+        } else
+        {
+            sLastFootstep = 0f;
+        }
+
         if (!photonView.IsMine) return;
 
         // Track healing time

@@ -58,7 +58,7 @@ public class PlayerAnimController : MonoBehaviour
         animator.SetFloat("frontBackMovement", p.frontBackMovement);
         animator.SetFloat("leftRightMovement", p.leftRightMovement);
         animator.SetBool("isMoving", p.isMoving);
-        animator.SetBool("isGrounded", p.isGrounded);
+        animator.SetBool("isGrounded", p.IsGrounded);
         animator.SetBool("isCrouching", p.IsCrouching);
 
         // Rotate item anchor

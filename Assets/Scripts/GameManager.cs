@@ -118,6 +118,9 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     public GameObject DeadScreen;
     public Text DeathDetailsText;
 
+    // Footsteps
+    FootstepPool[] footstepPools;
+
     public GameState CurrentGameState { 
         get => _curGameState; 
         set {
@@ -174,6 +177,9 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
 
         // Find all player spawn points
         playerSpawnLocations = FindObjectsOfType<PlayerSpawn>();
+
+        // Find all footstep pools
+        footstepPools = FindObjectsOfType<FootstepPool>();
 
         lm.Log(logSrc,"Started. State is " + CurrentGameState);
 
@@ -541,5 +547,23 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         }
         // Return a random item from the list. TODO this ignores weighting
         return spawnItems[Random.Range(0, spawnItems.Length)].worldPrefab;
+    }
+
+    public AudioClip GetFootstepByMaterial(PhysicMaterial material)
+    {
+        // Physics materials will be instanced, and " (Instance)" is added to the name, which we need to remove.
+        string matName = material.name.Replace(" (Instance)", "");
+        // Find a pool that matches our provided physics material
+        FootstepPool fsp = footstepPools.FirstOrDefault(fsp => fsp.material.name == matName);
+        // If we didn't find one to match the physics material, use the default
+        if (!fsp) fsp = footstepPools.FirstOrDefault(fsp => fsp.defaultPool);
+        // If we didn't find a default, things have gone wrong.
+        if (!fsp)
+        {
+            lm.LogError(logSrc, "Could not find a default footstep pool!");
+            return null;
+        }
+        // Return a random footstep from the pool
+        return fsp.GetRandomFootstep();
     }
 }
