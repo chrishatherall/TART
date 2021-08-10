@@ -200,9 +200,9 @@ public class FpsController : MonoBehaviourPun
         // Get input values 
         p.frontBackMovement = Input.GetAxis("Vertical"); // NOTE These values are lerped!
         p.leftRightMovement = Input.GetAxis("Horizontal");
-        p.isMoving = p.frontBackMovement != 0 || p.leftRightMovement != 0; // We're moving if there is any input
 
-        // TODO Test for more snappy footsteps, could use for input!
+        // This makes footsteps sound better when stopping
+        //p.isMoving = p.frontBackMovement != 0f || p.leftRightMovement != 0f; // We're moving if there is any input
         p.isMoving = Input.GetKey("w") || Input.GetKey("a") || Input.GetKey("s") || Input.GetKey("d");
 
         // Get forward/strafe direction
@@ -407,19 +407,7 @@ public class FpsController : MonoBehaviourPun
 
     }
 
-    public void Reset()
-    {
-        bool charConWasEnabled = this.charCon.enabled;
-        // Turn off the character controller before force-moving, or it'll just set us right back.
-        this.charCon.enabled = false;
-        Transform spawn = gm.GetPlayerSpawnLocation();
-        this.transform.position = spawn.position;
-        this.transform.rotation = spawn.rotation;
-        this.charCon.enabled = charConWasEnabled;
-    }
-
     // TODO yea all of this stuff should be on the player really
-
 
     // Drops our held item into the world. Called when we press G or on death
     public void TryDropHeldItem ()

@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -230,8 +230,20 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     }
 
     [PunRPC]
-    public void Reset()
+    public void Reset(bool forceRespawn)
     {
+        // Set new position if dead or being forced to respwn
+        if (IsDead || forceRespawn)
+        {
+            // Turn off the character controller before force-moving, or it'll just set us right back.
+            CharacterController charCon = GetComponent<CharacterController>();
+            bool charConWasEnabled = charCon && charCon.enabled;
+            if (charConWasEnabled) charCon.enabled = false;
+            Transform newTransform = gm.GetPlayerSpawnLocation();
+            this.transform.position = newTransform.position;
+            this.transform.rotation = newTransform.rotation;
+            if (charConWasEnabled) charCon.enabled = true;
+        }
         oil = 100;
         maxOil = 100;
         // Set damage of each BodyPart to 0

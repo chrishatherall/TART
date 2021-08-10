@@ -457,8 +457,8 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         Player existingPlayer = GetPlayerByActorNumber(PhotonNetwork.LocalPlayer.ActorNumber);
         if (existingPlayer)
         {
-            // Reset components on player.
-            existingPlayer.photonView.RPC("Reset", RpcTarget.All);
+            // Reset components on player and give it a new spawn location.
+            existingPlayer.photonView.RPC("Reset", RpcTarget.All, false);
         }
         else
         {
@@ -503,12 +503,11 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
 
     public void ResetPlayers()
     {
-        // TODO maybe respawn players entirely
-
         if (!PhotonNetwork.IsMasterClient) return;
         foreach (Player p in players)
         {
-            p.photonView.RPC("Reset", RpcTarget.All);
+            // Reset players but don't force a full respawn
+            p.photonView.RPC("Reset", RpcTarget.All, false);
         }
     }
 
