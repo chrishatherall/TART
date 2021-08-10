@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -52,7 +52,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     float footstepInterval = 0.5f; // Time between footsteps
     float sLastFootstep; // Seconds since last footstep
     [SerializeField]
-    float fFootstepVolume = 0.7f;
+    float fFootstepVolume = 0.3f;
 
     // Jump event
     public event EmptyEvent OnJump;
@@ -120,8 +120,8 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         get => _isGrounded;
         set
         {
-            // If the value changed and we're now grounded, do footstep
-            if (_isGrounded != value && value) DoFootstep();
+            // If the value changed and we're now grounded, do loud footstep
+            if (_isGrounded != value && value) DoFootstep(3);
             _isGrounded = value;
         }
     }
@@ -286,12 +286,12 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         if (healedParts > 0) photonView.RPC("DoHealVisuals", RpcTarget.All);
     }
 
-    void DoFootstep()
+    void DoFootstep(float volumeMultiplier)
     {
         // Cast a ray down at the thing under our feet
         bool hit = Physics.Raycast(this.transform.position, Vector3.down, out RaycastHit footstepHit, 1f);
         if (!hit) return;
-        audioSrc.PlayOneShot(gm.GetFootstepByMaterial(footstepHit.collider.material), fFootstepVolume);
+        audioSrc.PlayOneShot(gm.GetFootstepByMaterial(footstepHit.collider.material), fFootstepVolume * volumeMultiplier);
     }
 
     // Called on all clients by the fpscontroller
@@ -321,11 +321,12 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             if (sLastFootstep > footstepInterval)
             {
                 sLastFootstep = 0f;
-                DoFootstep();
+                DoFootstep(1);
             }
         } else
         {
-            sLastFootstep = 0f;
+            // If not moving, set interval to half a footstep so our first step comes a little quicker
+            sLastFootstep = footstepInterval / 2;
         }
 
         if (!photonView.IsMine) return;
