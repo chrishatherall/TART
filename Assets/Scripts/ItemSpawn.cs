@@ -21,6 +21,6 @@ public class ItemSpawn : MonoBehaviour
         // Find a random item from our list
         GameObject prefab = gm.GetItemFromSpawnList(spawnList);
         lm.Log(logSrc,"Spawning item: " + prefab.name);
-        PhotonNetwork.Instantiate(prefab.name, this.transform.position, Quaternion.identity, 0);
+        PhotonNetwork.Instantiate(prefab.name, this.transform.position, this.transform.rotation, 0);
     }
 }
