@@ -46,6 +46,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     bool _isCrouching;
     public bool isMoving;
     public bool isRunning;
+    public float crouchHeightMultiplier = 0.66f;
 
     // Footsteps
     [SerializeField]
@@ -67,7 +68,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     public GameObject itemAnchor;
     // The parent of the held-item anchor we need to move up/down when crouching
     Transform itemAnchorParent;
-    Vector3 itemAnchorParentPos;
+    // The difference in position between our item anchor parent and topOfHead. Used to calculate crouched position
+    Vector3 itemAnchorParentHeadDiff;
+
 
     AudioSource audioSrc;
     [SerializeField]
@@ -101,15 +104,15 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
                 {
                     _isCrouching = true;
                     // Lower the top of our head to crouching height (which is half)
-                    topOfHead.transform.localPosition = standingHeadPos * 0.5f;
-                    // Lower our item anchor to represent our arms dropping
-                    itemAnchorParent.transform.localPosition = itemAnchorParentPos * 0.5f;
+                    topOfHead.transform.localPosition = standingHeadPos * crouchHeightMultiplier;
+                    // Keep our item anchor relative to the top of the head
+                    itemAnchorParent.transform.position = topOfHead.transform.position + itemAnchorParentHeadDiff;
                 } else {
                     _isCrouching = false;
                     // Raise the top of our head to standing height
                     topOfHead.transform.localPosition = standingHeadPos;
-                    // Raise our item anchor
-                    itemAnchorParent.transform.localPosition = itemAnchorParentPos;
+                    // Keep our item anchor relative to the top of the head
+                    itemAnchorParent.transform.position = topOfHead.transform.position + itemAnchorParentHeadDiff;
                 }
             }
             
@@ -152,7 +155,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         standingHeadPos = topOfHead.transform.localPosition;
         // Set our standing itemAnchorHeight
         itemAnchorParent = itemAnchor.transform.parent;
-        itemAnchorParentPos = itemAnchorParent.transform.localPosition;
+        itemAnchorParentHeadDiff = itemAnchorParent.transform.position- topOfHead.transform.position;
 
         // Set as ready, and apply nickname when the local player has loaded
         if (photonView.IsMine)

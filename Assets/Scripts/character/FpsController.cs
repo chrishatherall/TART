@@ -64,6 +64,8 @@ public class FpsController : MonoBehaviourPun
     // Reference to our camera
     private Camera cam;
     float camHeight;
+    // The difference between our head height and our cam height
+    float camHeadHeightDiff;
     // Reference to our player script
     public Player p;
 
@@ -127,7 +129,8 @@ public class FpsController : MonoBehaviourPun
         Cursor.lockState = CursorLockMode.Locked;
 
         ccHeight = charCon.height;
-        camHeight = CamWiggleObject.transform.localPosition.y;
+        //camHeight = CamWiggleObject.transform.localPosition.y;
+        camHeadHeightDiff = p.topOfHead.transform.position.y - CamWiggleObject.transform.position.y;
     }
 
     // Update is called once per frame
@@ -172,9 +175,9 @@ public class FpsController : MonoBehaviourPun
         if (!p.IsCrouching && Input.GetKey(KeyCode.LeftControl))
         {
             p.IsCrouching = true;
-            charCon.height = ccHeight / 2;
+            charCon.height = ccHeight * p.crouchHeightMultiplier;
             charCon.center = new Vector3(0f, charCon.height / 2, 0f);
-            CamWiggleObject.transform.localPosition = new Vector3(0f, camHeight / 2, CamWiggleObject.transform.localPosition.z);
+            CamWiggleObject.transform.position = new Vector3(CamWiggleObject.transform.position.x, p.topOfHead.transform.position.y - camHeadHeightDiff, CamWiggleObject.transform.position.z);
         }
         if (p.IsCrouching && !Input.GetKey(KeyCode.LeftControl))
         {
@@ -185,7 +188,7 @@ public class FpsController : MonoBehaviourPun
                 p.IsCrouching = false;
                 charCon.center = new Vector3(0f, ccHeight / 2, 0f);
                 charCon.height = ccHeight;
-                CamWiggleObject.transform.localPosition = new Vector3(0f, camHeight, CamWiggleObject.transform.localPosition.z);
+                CamWiggleObject.transform.position = new Vector3(CamWiggleObject.transform.position.x, p.topOfHead.transform.position.y - camHeadHeightDiff, CamWiggleObject.transform.position.z);
             }
         }
         #endregion
