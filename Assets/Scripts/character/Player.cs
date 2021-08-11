@@ -76,6 +76,12 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     [SerializeField]
     AudioClip healSound;
 
+    [SerializeField]
+    AudioClip damageSound;
+
+    [SerializeField]
+    AudioClip deathSound;
+
     // Public access for the role
     public TartRole Role { get => _role; }
 
@@ -266,6 +272,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         // Can't take more damage if we're dead
         if (IsDead) return;
 
+        // Play damage sound if we own this player
+        if (photonView.IsMine) audioSrc.PlayOneShot(damageSound);
+
         // Find the BodyPart that took damage
         BodyPart bodyPart = GetBodyPartByName(bodyPartName);
         if (bodyPart)
@@ -370,6 +379,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             // Leak oil if damaged
             if (dmg > 0 && oil > 0)
             {
+                audioSrc.PlayOneShot(damageSound);
                 oil -= dmg; // TODO: Hook into this change to create oil leaks on the floor. Oil can still leak if dead via other means, creating cool oil pools.
                 // If we're out of oil and not dead, die.
                 if (oil <= 0 && !IsDead)
@@ -427,6 +437,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
         // We don't need to do anything else if this isn't our player
         if (!this.photonView.IsMine) return;
+
+        // Play death sound
+        audioSrc.PlayOneShot(deathSound);
 
         if (!isBot) gm.Alert("YOU DIED");
         // TODO this might be better hooking into an event to increase modularity
