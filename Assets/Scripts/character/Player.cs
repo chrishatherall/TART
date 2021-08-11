@@ -209,6 +209,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             stream.SendNext(isMoving);
             stream.SendNext(isRunning);
             stream.SendNext(IsGrounded);
+            stream.SendNext(SerialiseBodyPartDamage());
         }
         else
         {
@@ -227,6 +228,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             this.isMoving = (bool)stream.ReceiveNext();
             this.isRunning = (bool)stream.ReceiveNext();
             this.IsGrounded = (bool)stream.ReceiveNext();
+            DeserialiseBodyPartDamage((string)stream.ReceiveNext());
         }
     }
 
@@ -393,7 +395,39 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
     BodyPart GetBodyPartByName(string name)
     {
-        return bodyParts.First(bp => bp.gameObject.name == name);
+        return bodyParts.FirstOrDefault(bp => bp.gameObject.name == name);
+    }
+
+    // Serialises the damage of our BodyParts into a string
+    string SerialiseBodyPartDamage ()
+    {
+        string[] bpData = new string[bodyParts.Length];
+        for (int i = 0; i < bodyParts.Length; i++)
+        {
+            bpData[i] = bodyParts[i].gameObject.name + ":" + bodyParts[i].Damage;
+        }
+        return string.Join("/", bpData);
+    }
+
+    void DeserialiseBodyPartDamage (string data)
+    {
+        // The first frame we might not have any bones, so ignore 0-length data. BodyParts can also be null on startup
+        if (data.Length == 0 || bodyParts == null || bodyParts.Length == 0) return;
+
+        string[] parts = data.Split('/');
+        foreach (string part in parts)
+        {
+            string[] split = part.Split(':');
+            // Find a BodyPart by name of split[0]
+            
+            BodyPart bp = GetBodyPartByName(split[0]);
+            if (!bp)
+            {
+                lm.LogError(logSrc, $"Error deserialising BodyPart damage, invalid part name. Data: '{data}'");
+                return;
+            }
+            bp.Damage = int.Parse(split[1]);
+        }
     }
 
     public int GetDamage()
