@@ -147,6 +147,21 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         }
     }
 
+    // Close the game immediately
+    public void Quit()
+    {
+        // Note: ignored in the editor
+        Application.Quit();
+    }
+
+    // Disconnects from the server
+    public void Disconnect()
+    {
+        PhotonNetwork.LeaveRoom();
+        Application.LoadLevel(0);
+    }
+
+
     void Awake()
     {
         // Add reference to ourself to the static GameManager
