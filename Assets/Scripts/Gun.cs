@@ -161,7 +161,7 @@ public class Gun : MonoBehaviourPun
             if (bp)
             {
                 // If we hit a bodypart, send an rpc to the parent player object 
-                bp.p.photonView.RPC("TakeDamage", RpcTarget.All, damage, bp.name);
+                bp.p.photonView.RPC("TakeDamage", RpcTarget.All, damage, bp.name, bulletDirection * shotForce);
             }
 
             // Check if the object we hit has a rigidbody attached

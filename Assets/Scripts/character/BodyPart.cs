@@ -47,11 +47,11 @@ public class BodyPart : MonoBehaviour
     }
 
     // This is an object that can receive damage
-    public void TakeDamage(int dmg)
+    public void TakeDamage(int dmg, Vector3 hitDirection)
     {
         // Note: This method is always local to the damage dealer, we need to forward damage onto the player script via rpc.
         // Also sends bone (object) name, so the Player knows which part of the body took damage
-        if (p) p.photonView.RPC("TakeDamage", Photon.Pun.RpcTarget.All, dmg, this.name);
+        if (p) p.photonView.RPC("TakeDamage", Photon.Pun.RpcTarget.All, dmg, this.name, hitDirection);
     }
 
 }

@@ -72,7 +72,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     Vector3 itemAnchorParentHeadDiff;
 
 
-    AudioSource audioSrc;
+    public AudioSource audioSrc;
     [SerializeField]
     AudioClip healSound;
 
@@ -266,7 +266,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     }
 
     [PunRPC]
-    public void TakeDamage(int dmg, string bodyPartName)
+    public void TakeDamage(int dmg, string bodyPartName, Vector3 hitDirection)
     {
         // Don't deal with damage if we don't own this player
         //if (!photonView.IsMine) return; // TEMPORARILY do this on all clients for the visuals, need proper BodyPart syncing
@@ -287,10 +287,11 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             lm.LogError(logSrc, $"Could not find body part '{bodyPartName}'");
         }
 
-        // To make damage more responsive, kill player instantly if damage > oil
+        // To make damage more responsive, kill player instantly if damage > oil, and hit the ragdoll with hitDirection force
         if (GetDamage() > oil)
         {
-            Kill();
+            Kill(hitDirection);
+            
         }
     }
 
@@ -452,7 +453,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     }
 
     // Instantly kills this player (if local)
-    public void Kill()
+    public void Kill(Vector3 hitDirection)
     {
         if (!photonView.IsMine)
         {
@@ -460,6 +461,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             return;
         }
         IsDead = true;
+        // Ragdoll should be enabled now that we're dead, so apply hit force
+        Rigidbody rb = GetBodyPartByName("B-chest").GetComponent<Rigidbody>();
+        if (rb) rb.AddForce(hitDirection, ForceMode.Impulse);
     }
 
     // Called when when isdead is set to true
