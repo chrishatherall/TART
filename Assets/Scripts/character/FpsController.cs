@@ -327,8 +327,8 @@ public class FpsController : MonoBehaviourPun
             cursorTooltip.text = "";
         }
 
-        // If we pressed F and are dragging a body, stop
-        if (Input.GetKeyDown(KeyCode.F))
+        // Rigidbody dragging
+        if (Input.GetKeyDown(KeyCode.Z))
         {
             if (fj.connectedBody)
             {
@@ -422,10 +422,10 @@ public class FpsController : MonoBehaviourPun
     }
 
     // Drops an item into the world
-    void TryDropItem (string prefabName)
+    public void TryDropItem (string prefabName)
     {
         // Tell server we're dropping our held item.
-        photonView.RPC("RpcDropItem", RpcTarget.MasterClient, p.heldItemScript.worldPrefab.name);
+        photonView.RPC("RpcDropItem", RpcTarget.MasterClient, prefabName);
     }
 
     [PunRPC]
@@ -435,8 +435,10 @@ public class FpsController : MonoBehaviourPun
         lm.Log(logSrc,$"Player {p.ID} dropping item {prefabName}");
         // Create item being dropped
         GameObject go = PhotonNetwork.InstantiateRoomObject(prefabName, cam.transform.position, transform.rotation);
+        if (!go) return; // Account for errors when instantiating objects
         // Add some force so it moves away from the player who dropped it
-        go.GetComponent<Rigidbody>().AddForce(cam.transform.forward * 1000);
+        Rigidbody rb = go.GetComponent<Rigidbody>();
+        if (rb) rb.AddForce(cam.transform.forward * 1000);
     }
 
     /// <summary>

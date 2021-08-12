@@ -46,6 +46,10 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     // The player prefab we spawn for ourselves
     public GameObject playerPrefab;
 
+    // Ref to the special weapon UI elements for Deathmatch
+    public GameObject grenadeNotification;
+    public GameObject c4Notification;
+
     // Round-change noises.
     [SerializeField]
     AudioSource roundChange;
