@@ -428,6 +428,22 @@ public class FpsController : MonoBehaviourPun
         photonView.RPC("RpcDropItem", RpcTarget.MasterClient, prefabName);
     }
 
+    // Checks to see if we can place an item at our current looking point, considering a maximum distance.
+    // Used when trying to place C4, trips, and cameras.
+    public bool CanPlaceItem(string prefabName, float distance)
+    {
+        Vector3 rayOrigin = cam.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, 0.0f));
+        bool hitSomething = Physics.Raycast(rayOrigin, cam.transform.forward, out RaycastHit hit, distance, layermask);
+        // Only allow placing on static objects? Would avoid letting us place on people, but also disallows placing on doors
+        return hitSomething && hit.collider.gameObject.isStatic;
+    }
+
+    // Places the provided prefab on whatever we're looking at. Things calling this should use CanPlaceItem beforehand
+    public void PlaceItem (string prefabName)
+    {
+        PhotonNetwork.InstantiateRoomObject(prefabName, lastHit.point, Quaternion.FromToRotation(Vector3.up, lastHit.normal));
+    }
+
     [PunRPC]
     void RpcDropItem (string prefabName)
     {

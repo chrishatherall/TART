@@ -90,6 +90,8 @@ public class DeathmatchPlayer : MonoBehaviour
         if (HasC4 && Input.GetKeyDown("c"))
         {
             // Place c4
+            FpsController fpsc = GetComponent<FpsController>();
+            if (fpsc && fpsc.CanPlaceItem("C4", 2f)) fpsc.PlaceItem("C4");
         }
     }
 }

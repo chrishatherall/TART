@@ -113,7 +113,7 @@ public class UI_commandWindow : MonoBehaviourPun
 
             case "KILL":
                 // Currently you can only kill your own player
-                if (pmi.Sender.IsLocal) p.Kill(Vector3.zero);
+                if (pmi.Sender.IsLocal) p.Kill(Vector3.zero, new List<BodyPart>());
                 break;
 
             case "ROUNDRESTART":
