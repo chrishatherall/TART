@@ -272,7 +272,7 @@ public class FpsController : MonoBehaviourPun
         if (Input.GetKeyDown("p"))
         {
             SkinnedMeshRenderer smr = GetComponentInChildren<SkinnedMeshRenderer>(includeInactive:true);
-            if (smr) smr.gameObject.SetActive(!smr.gameObject.activeSelf);
+            if (smr) smr.enabled = !smr.enabled;
         }
 
         // healing

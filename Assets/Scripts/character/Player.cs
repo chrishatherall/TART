@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -82,6 +82,10 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     [SerializeField]
     AudioClip deathSound;
 
+    // Ref to the skinned mesh renderer. Disabled locally if alive, otherwise enabled
+    [SerializeField]
+    SkinnedMeshRenderer bodySkinnedMesh;
+
     // Public access for the role
     public TartRole Role { get => _role; }
 
@@ -95,6 +99,8 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             {
                 _isDead = value;
                 if (_isDead) Die();
+                // Disable the skinned mesh if we're the owner and alive, otherwise enable it
+                if (bodySkinnedMesh) bodySkinnedMesh.enabled = !(photonView.IsMine && !_isDead);
             }
         }
     }
@@ -166,6 +172,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         // Set as ready, and apply nickname when the local player has loaded
         if (photonView.IsMine)
         {
+            // Turn off our skinned mesh renderer
+            if (bodySkinnedMesh) bodySkinnedMesh.enabled = false;
+
             if (isBot)
             {
                 actorNumber = 10000 + this.photonView.ViewID; // Probably not the safest
@@ -346,7 +355,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     public void Update()
     {
         // Footsteps
-        if (IsGrounded && isRunning)
+        if (!IsDead && IsGrounded && isRunning)
         {
             sLastFootstep += Time.deltaTime;
             if (sLastFootstep > footstepInterval)
@@ -386,7 +395,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             // Leak oil if damaged
             if (dmg > 0 && oil > 0)
             {
-                audioSrc.PlayOneShot(damageSound);
+                if (!IsDead) audioSrc.PlayOneShot(damageSound);
                 oil -= dmg; // TODO: Hook into this change to create oil leaks on the floor. Oil can still leak if dead via other means, creating cool oil pools.
                 // If we're out of oil and not dead, die.
                 if (oil <= 0 && !IsDead)
