@@ -273,6 +273,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         this._role = gm.GetRoleFromID(0);
 
         SetRagdoll(false);
+
+        // Kind of a dirty fix, but works until we have a UI manager.
+        if (photonView.IsMine) Cursor.lockState = CursorLockMode.Locked;
     }
 
     [PunRPC]
