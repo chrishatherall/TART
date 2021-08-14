@@ -3,12 +3,15 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using static GameManager;
+using static LogManager;
 
 // Causes an explosion after the time runs out
 
 [RequireComponent(typeof(AudioSource))]
 public class TimedExplosive : MonoBehaviourPun
 {
+    readonly string logSrc = "T_EXPL";
+
     public float sTimeUntilExplosion;
 
     public float explosionRadius;
@@ -62,14 +65,19 @@ public class TimedExplosive : MonoBehaviourPun
                 hitPlayers[bp.p.ID] += "/" + bp.name;
             }
         }
+
+        lm.Log(logSrc, $"Explosion at {this.transform.position} with {explosionRadius} radius hit {hitColliders.Length} colliders and {hitPlayers.Count} players.");
         
         foreach (DictionaryEntry de in hitPlayers)
         {
             Player p = gm.GetPlayerByID(int.Parse(de.Key.ToString()));
             // Scale damage and force by distance
             float distance = Vector3.Distance(p.transform.position, this.transform.position);
+            // In some cases, our distance can be more than the explosion radius if our colliders clip the edge of the explosion. In this case, ignore the damage 
+            // because it'll otherwise become negative and do healing.
+            if (distance > explosionRadius) break;
             int damage = Mathf.RoundToInt(explosionDamage * (1 - distance / explosionRadius));
-            float force = explosionForce * (distance / explosionRadius);
+            float force = explosionForce * (1 - distance / explosionRadius);
             if (p) p.photonView.RPC("TakeDamage", Photon.Pun.RpcTarget.All, damage, de.Value.ToString(), Vector3.Normalize(p.transform.position + new Vector3(0f, 1f, 0f) - this.transform.position) * force); // Note: use roughly the chest of the player so they are thrown upwards
         }
 
