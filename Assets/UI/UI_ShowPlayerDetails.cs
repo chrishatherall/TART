@@ -41,6 +41,14 @@ public class UI_ShowPlayerDetails : MonoBehaviour
     // Bullet background image, for scaling
     public UnityEngine.UI.Image gunMaxBulletsImage;
 
+
+    // The healing object
+    public GameObject healingObj;
+    // Healing time image, which scales X with healing progress
+    public UnityEngine.UI.Image curHealTimeImage;
+    // Max healing time image, used to calculate curHealTimeImage scale
+    public UnityEngine.UI.Image maxHealTimeImage;
+
     // Update is called once per frame
     void Update()
     {
@@ -62,6 +70,14 @@ public class UI_ShowPlayerDetails : MonoBehaviour
         {
             Vector2 newSize = new Vector2(maxHealthImage.rectTransform.rect.width * ((float)targetPlayer.oil / (float)targetPlayer.maxOil), maxHealthImage.rectTransform.rect.height);
             curHealthImage.rectTransform.sizeDelta = newSize;
+        }
+
+        // Set healing elements
+        healingObj.active = targetPlayer.isHealing;
+        if (targetPlayer.isHealing)
+        {
+            Vector2 newSize = new Vector2(maxHealTimeImage.rectTransform.rect.width * ((float)targetPlayer.sSinceLastHeal / (float)targetPlayer.sHealInterval), maxHealTimeImage.rectTransform.rect.height);
+            curHealTimeImage.rectTransform.sizeDelta = newSize;
         }
 
         // Set gamemode text and values

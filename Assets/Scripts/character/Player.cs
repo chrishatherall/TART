@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -143,7 +143,8 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
     // Healing
     public bool isHealing;
-    float sSinceLastHeal = 0f;
+    public float sSinceLastHeal = 0f;
+    public float sHealInterval = 1f;
 
     void Start()
     {
@@ -375,7 +376,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         if (isHealing && !IsDead)
         {
             sSinceLastHeal += Time.deltaTime;
-            if (sSinceLastHeal > 1)
+            if (sSinceLastHeal > sHealInterval)
             {
                 Heal(5);
                 sSinceLastHeal = 0f;
