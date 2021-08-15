@@ -51,9 +51,12 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     // Footsteps
     [SerializeField]
     float footstepInterval = 0.5f; // Time between footsteps
-    float sLastFootstep; // Seconds since last footstep
+    float sLastFootstep; // Seconds since last footstep TODO not technically true, change this along with sfootsteplastplayed
     [SerializeField]
     float fFootstepVolume = 0.3f;
+    [SerializeField]
+    float sFootstepCooldown = 0.2f; // Time in seconds between max footstep sounds
+    float sFootstepLastPlayed;
 
     // Jump event
     public event EmptyEvent OnJump;
@@ -100,7 +103,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
                 _isDead = value;
                 if (_isDead) Die();
                 // Disable the skinned mesh if we're the owner and alive, otherwise enable it
-                if (bodySkinnedMesh) bodySkinnedMesh.enabled = !(photonView.IsMine && !_isDead);
+                if (!isBot && bodySkinnedMesh) bodySkinnedMesh.enabled = !(photonView.IsMine && !_isDead);
             }
         }
     }
@@ -173,9 +176,6 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         // Set as ready, and apply nickname when the local player has loaded
         if (photonView.IsMine)
         {
-            // Turn off our skinned mesh renderer
-            if (bodySkinnedMesh) bodySkinnedMesh.enabled = false;
-
             if (isBot)
             {
                 actorNumber = 10000 + this.photonView.ViewID; // Probably not the safest
@@ -183,6 +183,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             }
             else
             {
+                // Turn off our skinned mesh renderer
+                if (bodySkinnedMesh) bodySkinnedMesh.enabled = false;
+
                 actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
                 nickname = PhotonNetwork.LocalPlayer.NickName;
                 SetLayer(7); // Set to localplayer layer
@@ -332,10 +335,14 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
     void DoFootstep(float volumeMultiplier)
     {
+        // Make sure our last footstep is over our cooldown
+        if (Time.time - sFootstepLastPlayed < sFootstepCooldown) return;
+        sLastFootstep = 0f;
         // Cast a ray down at the thing under our feet
         bool hit = Physics.Raycast(this.transform.position, Vector3.down, out RaycastHit footstepHit, 1f);
         if (!hit) return;
         audioSrc.PlayOneShot(gm.GetFootstepByMaterial(footstepHit.collider.material), fFootstepVolume * volumeMultiplier);
+        sFootstepLastPlayed = Time.time;
     }
 
     // Called on all clients by the fpscontroller
@@ -364,13 +371,8 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             sLastFootstep += Time.deltaTime;
             if (sLastFootstep > footstepInterval)
             {
-                sLastFootstep = 0f;
                 DoFootstep(1);
             }
-        } else
-        {
-            // If not moving, set interval to half a footstep so our first step comes a little quicker
-            sLastFootstep = footstepInterval / 2;
         }
 
         if (!photonView.IsMine) return;
