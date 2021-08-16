@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
@@ -435,7 +435,7 @@ public class FpsController : MonoBehaviourPun
         Vector3 rayOrigin = cam.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, 0.0f));
         bool hitSomething = Physics.Raycast(rayOrigin, cam.transform.forward, out RaycastHit hit, distance, layermask);
         // Only allow placing on static objects? Would avoid letting us place on people, but also disallows placing on doors
-        return hitSomething && hit.collider.gameObject.isStatic;
+        return hitSomething; // && hit.collider.gameObject.isStatic; TODO isStatic is editor only!
     }
 
     // Places the provided prefab on whatever we're looking at. Things calling this should use CanPlaceItem beforehand

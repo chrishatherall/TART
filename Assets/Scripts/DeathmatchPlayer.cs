@@ -8,6 +8,8 @@ using static LogManager;
 
 public class DeathmatchPlayer : MonoBehaviour
 {
+    readonly string logSrc = "DM_PLAYER";
+
     // Player kills
     public int kills;
 
