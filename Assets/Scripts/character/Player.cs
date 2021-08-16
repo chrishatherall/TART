@@ -284,9 +284,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     [PunRPC]
     public void TakeDamage(int dmg, string bodyPartNamesString, Vector3 hitDirection)
     {
-        Debug.Log($"Taking damage of {dmg} to bodyparts {bodyPartNamesString}");
+        lm.Log(logSrc, $"Taking damage of {dmg} to bodyparts {bodyPartNamesString}");
         // Don't deal with damage if we don't own this player
-        //if (!photonView.IsMine) return; // TEMPORARILY do this on all clients for the visuals, need proper BodyPart syncing
+        //if (!photonView.IsMine) return; // TODO TEMPORARILY do this on all clients for the visuals, need proper BodyPart syncing
 
         // Can't take more damage if we're dead
         if (IsDead) return;
@@ -315,6 +315,13 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         }
     }
 
+    // This is to allow the server to kill a player easily
+    [PunRPC]
+    public void TakeDamage(int dmg)
+    {
+        TakeDamage(dmg, "B-head", Vector3.up);
+    }
+
     public void Heal(int amount)
     {
         // Run loop once for each heal amount
@@ -341,7 +348,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         // Cast a ray down at the thing under our feet
         bool hit = Physics.Raycast(this.transform.position, Vector3.down, out RaycastHit footstepHit, 1f);
         if (!hit) return;
-        audioSrc.PlayOneShot(gm.GetFootstepByMaterial(footstepHit.collider.material), fFootstepVolume * volumeMultiplier);
+        if (audioSrc) audioSrc.PlayOneShot(gm.GetFootstepByMaterial(footstepHit.collider.material), fFootstepVolume * volumeMultiplier);
         sFootstepLastPlayed = Time.time;
     }
 
