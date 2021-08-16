@@ -14,6 +14,10 @@ public class TimedExplosive : MonoBehaviourPun
 
     public float sTimeUntilExplosion;
 
+    // Time after explosion until this object is remove entirely. Should be longer than the post-explosion visual effects.
+    public float sPostExplosionDecayTime = 5;
+    private float sTimeSinceExplosion;
+
     public float explosionRadius;
     // Explosion damage and force scale over radius
     public int explosionDamage;
@@ -34,10 +38,18 @@ public class TimedExplosive : MonoBehaviourPun
     // Update is called once per frame
     void Update()
     {
-        if (!photonView.IsMine || hasExploded) return;
+        if (hasExploded)
+        {
+            // When we reach our post-explosion decay time, remove this object
+            sTimeSinceExplosion += Time.deltaTime;
+            if (sTimeSinceExplosion > sPostExplosionDecayTime) PhotonNetwork.Destroy(this.photonView);
+        } else
+        {
+            // When we reach our explosion timer, explode
+            sTimeUntilExplosion -= Time.deltaTime;
+            if (sTimeUntilExplosion < 0f) Explode();
+        }
 
-        sTimeUntilExplosion -= Time.deltaTime;
-        if (sTimeUntilExplosion < 0f) Explode();
     }
 
     void Explode()
@@ -51,43 +63,43 @@ public class TimedExplosive : MonoBehaviourPun
         // Turn on the gameobject containing the particle emitters
         if (psGameobject) psGameobject.SetActive(true);
 
-        // group damage by player and send msg directly to player instead of bodypart, as we can affect multiple bodyparts at once
-
-        Hashtable hitPlayers = new Hashtable();
-        // Deal damage to players within the radius
-        Collider[] hitColliders = Physics.OverlapSphere(this.transform.position, explosionRadius);
-        foreach(Collider collider in hitColliders)
+        // Damage and force code should be done by the server
+        if (PhotonNetwork.IsMasterClient)
         {
-            BodyPart bp = collider.GetComponent<BodyPart>();
-            if (bp)
+            // Group damage by player and send msg directly to player instead of bodypart, as we can affect multiple bodyparts at once
+            Hashtable hitPlayers = new Hashtable();
+            // Deal damage to players within the radius
+            Collider[] hitColliders = Physics.OverlapSphere(this.transform.position, explosionRadius);
+            foreach(Collider collider in hitColliders)
             {
-                if (!hitPlayers.ContainsKey(bp.p.ID)) hitPlayers.Add(bp.p.ID, "");
-                hitPlayers[bp.p.ID] += "/" + bp.name;
+                BodyPart bp = collider.GetComponent<BodyPart>();
+                if (bp)
+                {
+                    if (!hitPlayers.ContainsKey(bp.p.ID)) hitPlayers.Add(bp.p.ID, "");
+                    hitPlayers[bp.p.ID] += "/" + bp.name;
+                }
             }
-        }
 
-        lm.Log(logSrc, $"Explosion at {this.transform.position} with {explosionRadius} radius hit {hitColliders.Length} colliders and {hitPlayers.Count} players.");
+            lm.Log(logSrc, $"Explosion at {this.transform.position} with {explosionRadius} radius hit {hitColliders.Length} colliders and {hitPlayers.Count} players.");
         
-        foreach (DictionaryEntry de in hitPlayers)
-        {
-            Player p = gm.GetPlayerByID(int.Parse(de.Key.ToString()));
-            // Scale damage and force by distance
-            float distance = Vector3.Distance(p.transform.position, this.transform.position);
-            // In some cases, our distance can be more than the explosion radius if our colliders clip the edge of the explosion. In this case, ignore the damage 
-            // because it'll otherwise become negative and do healing.
-            if (distance > explosionRadius) break;
-            int damage = Mathf.RoundToInt(explosionDamage * (1 - distance / explosionRadius));
-            float force = explosionForce * (1 - distance / explosionRadius);
-            if (p) p.photonView.RPC("TakeDamage", Photon.Pun.RpcTarget.All, damage, de.Value.ToString(), Vector3.Normalize(p.transform.position + new Vector3(0f, 1f, 0f) - this.transform.position) * force); // Note: use roughly the chest of the player so they are thrown upwards
+            foreach (DictionaryEntry de in hitPlayers)
+            {
+                Player p = gm.GetPlayerByID(int.Parse(de.Key.ToString()));
+                // Scale damage and force by distance
+                float distance = Vector3.Distance(p.transform.position, this.transform.position);
+                // In some cases, our distance can be more than the explosion radius if our colliders clip the edge of the explosion. In this case, ignore the damage 
+                // because it'll otherwise become negative and do healing.
+                if (distance > explosionRadius) break;
+                int damage = Mathf.RoundToInt(explosionDamage * (1 - distance / explosionRadius));
+                float force = explosionForce * (1 - distance / explosionRadius);
+                if (p) p.photonView.RPC("TakeDamage", Photon.Pun.RpcTarget.All, damage, de.Value.ToString(), Vector3.Normalize(p.transform.position + new Vector3(0f, 1f, 0f) - this.transform.position) * force); // Note: use roughly the chest of the player so they are thrown upwards
+            }
         }
 
         // Destroy the physical object that exploded
         if (physicalObject) Destroy(physicalObject);
         // Destroy rigidbody so our explosion doesn't run away
         Rigidbody rb = GetComponent<Rigidbody>();
-        if (rb) Destroy(rb);
-
-        // TODO Destroy self
-        //PhotonNetwork.Destroy(this.photonView, 10000);
+        if (rb) Destroy(rb);        
     }
 }
