@@ -80,6 +80,8 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 		}
 
 		versionText.text = Application.version;
+
+		Cursor.lockState = CursorLockMode.None;
 	}
 
 	/// <summary>
