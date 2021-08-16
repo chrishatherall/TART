@@ -346,7 +346,7 @@ public class fps_controller_phys : MonoBehaviourPun
         GameManager.gm.photonView.RPC("DestroyItem", RpcTarget.MasterClient, PV.ViewID);
 
         // Setup the gun and tell others to
-        newItem.GetComponent<Gun>().Setup(player.ID);
+        //newItem.GetComponent<Gun>().Setup(player.ID);
         newItem.GetPhotonView().RPC("Setup", RpcTarget.Others, player.ID);
 
         // Destroy the original pickup

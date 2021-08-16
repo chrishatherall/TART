@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
@@ -400,12 +400,11 @@ public class FpsController : MonoBehaviourPun
         // Server should destroy the original
         GameManager.gm.photonView.RPC("DestroyItem", RpcTarget.MasterClient, PV.ViewID);
 
-        // Setup the gun and tell other players to
-        // TODO assumes it's a gun
         // TODO items with an audio source should be set to 2d spatial blend so the sound doesn't favour one speaker (annoying)
-        newItem.GetComponent<Gun>().Setup(p.ID);
-        newItem.GetPhotonView().RPC("Setup", RpcTarget.Others, p.ID);
+        // Setup the gun by giving it an owner id
+        newItem.GetComponent<HeldItem>().OwnerPlayerId = p.ID;
 
+        // TODO define this layer somewhere. Does this even work properly?
         newItem.layer = 7;
 
     }

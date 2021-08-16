@@ -12,6 +12,8 @@ public class Gun : MonoBehaviourPun
 {
     readonly string logSrc = "GUN";
 
+
+
     // Model recoil while shooting
     // Save the default model and max-recoil position (which will be Vector3.zero)
     // When shooting, we'll lerp between these two, based on firing time.
@@ -72,13 +74,13 @@ public class Gun : MonoBehaviourPun
     [SerializeField]
     ParticleSystem ps;
 
-    [PunRPC]
-    public void Setup(int playerId)
+    // Called by the HeldItem script when the owner is set
+    public void SetOwner(int ownerPlayerId)
     {
-        Player owner = GameManager.gm.GetPlayerByID(playerId);
+        Player owner = GameManager.gm.GetPlayerByID(ownerPlayerId);
         if (!owner)
         {
-            lm.LogError(logSrc,"Gun setup could not find player " + playerId);
+            lm.LogError(logSrc,"Gun setup could not find player " + ownerPlayerId);
             return;
         }
 
