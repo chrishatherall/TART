@@ -40,6 +40,9 @@ public class UI_commandWindow : MonoBehaviourPun
     [SerializeField]
     Text logText;
 
+    [SerializeField]
+    int maxLogLength = 1000; // in characters
+
     // Called when someone finishes entering text in the command field
     // Not just called when hitting enter. Sometimes when hitting ` or maybe even clicking off?
     public void CommandEntered()
@@ -133,7 +136,14 @@ public class UI_commandWindow : MonoBehaviourPun
 
     public void HandleLog(string message, bool isError)
     {
-        logText.text += "\n" + message;
+        string newText = logText.text + "\n" + message;
+        // Trim text
+        if (newText.Length > maxLogLength)
+        {
+            newText = newText.Substring(newText.Length-maxLogLength);
+        }
+        logText.text = newText;
+
         // TODO colour errors in red
         // TODO scroll down automatically
     }
