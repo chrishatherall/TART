@@ -34,7 +34,6 @@ public class NoiseOnHit : MonoBehaviour
         if (Time.time < lastPlayTime + sCooldown) return;
         lastPlayTime = Time.time;
 
-        Debug.Log(collision.collider.material.name);
         audioSrc.PlayOneShot(gm.GetFootstepByMaterial(collision.collider.material), 0.3f);
         audioSrc.PlayOneShot(gm.GetFootstepByMaterial(thisCollider.material), 0.3f);
     }

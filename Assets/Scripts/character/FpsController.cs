@@ -433,8 +433,10 @@ public class FpsController : MonoBehaviourPun
     {
         Vector3 rayOrigin = cam.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, 0.0f));
         bool hitSomething = Physics.Raycast(rayOrigin, cam.transform.forward, out RaycastHit hit, distance, layermask);
-        // Only allow placing on static objects? Would avoid letting us place on people, but also disallows placing on doors
-        return hitSomething; // && hit.collider.gameObject.isStatic; TODO isStatic is editor only!
+        // Only allow placing on static objects, which is hard to determine but for now anything with a lightmap index
+        if (!hitSomething) return false;
+        MeshRenderer mr = hit.collider.GetComponent<MeshRenderer>();
+        return mr && mr.lightmapIndex > -1; // Items with no lightmap have index -1
     }
 
     // Places the provided prefab on whatever we're looking at. Things calling this should use CanPlaceItem beforehand
