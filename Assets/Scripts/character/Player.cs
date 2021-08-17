@@ -47,6 +47,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     public bool isMoving;
     public bool isRunning;
     public float crouchHeightMultiplier = 0.66f;
+    // Velocity 
+    float[] last3FramesVelocity = { 1f, 1f, 1f };
+    CharacterController charCon;
 
     // Footsteps
     [SerializeField]
@@ -57,6 +60,8 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     [SerializeField]
     float sFootstepCooldown = 0.2f; // Time in seconds between max footstep sounds
     float sFootstepLastPlayed;
+    float maxFootstepVolume = 10f;
+    float minFootstepVolume = 0.2f;
 
     // Jump event
     public event EmptyEvent OnJump;
@@ -139,7 +144,10 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         set
         {
             // If the value changed and we're now grounded, do loud footstep
-            if (_isGrounded != value && value) DoFootstep(3);
+            if (_isGrounded != value && value)
+            {
+                DoFootstep(last3FramesVelocity[2]);
+            }
             _isGrounded = value;
         }
     }
@@ -157,6 +165,8 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             lm.LogError(logSrc,"GM not ready!");
             return;
         }
+
+        charCon = GetComponent<CharacterController>();
 
         // Set ourselves as default role
         this._role = gm.GetRoleFromID(0);
@@ -342,6 +352,12 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
     void DoFootstep(float volumeMultiplier)
     {
+        // Ensure volume is positive
+        if (volumeMultiplier < 0) volumeMultiplier *= -1;
+        // Ignore small values
+        if (volumeMultiplier < minFootstepVolume) return;
+        // Limit volume
+        if (volumeMultiplier > maxFootstepVolume) volumeMultiplier = maxFootstepVolume;
         // Make sure our last footstep is over our cooldown
         if (Time.time - sFootstepLastPlayed < sFootstepCooldown) return;
         sLastFootstep = 0f;
@@ -380,6 +396,12 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             {
                 DoFootstep(1);
             }
+        }
+        if (charCon)
+        {
+            last3FramesVelocity[2] = last3FramesVelocity[1];
+            last3FramesVelocity[1] = last3FramesVelocity[0];
+            last3FramesVelocity[0] = charCon.velocity.y;
         }
 
         if (!photonView.IsMine) return;
