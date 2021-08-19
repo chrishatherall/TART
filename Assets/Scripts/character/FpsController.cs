@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
@@ -442,7 +442,7 @@ public class FpsController : MonoBehaviourPun
     // Places the provided prefab on whatever we're looking at. Things calling this should use CanPlaceItem beforehand
     public void PlaceItem (string prefabName)
     {
-        PhotonNetwork.InstantiateRoomObject(prefabName, lastHit.point, Quaternion.FromToRotation(Vector3.up, lastHit.normal));
+        PhotonNetwork.Instantiate(prefabName, lastHit.point, Quaternion.FromToRotation(Vector3.up, lastHit.normal));
     }
 
     [PunRPC]

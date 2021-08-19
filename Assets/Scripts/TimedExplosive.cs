@@ -42,7 +42,7 @@ public class TimedExplosive : MonoBehaviourPun
         {
             // When we reach our post-explosion decay time, remove this object
             sTimeSinceExplosion += Time.deltaTime;
-            if (sTimeSinceExplosion > sPostExplosionDecayTime) PhotonNetwork.Destroy(this.photonView);
+            if (photonView.IsMine && sTimeSinceExplosion > sPostExplosionDecayTime) PhotonNetwork.Destroy(this.photonView);
         } else
         {
             // When we reach our explosion timer, explode
