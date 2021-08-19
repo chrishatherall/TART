@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
@@ -235,7 +235,7 @@ public class FpsController : MonoBehaviourPun
             fallingSpeed = -0.3f; // When on the ground we set a little downward speed otherwise the controller seems 
             // to 'bounce' on the ground and half the time doesn't consider itself grounded.
             // Go up if we're hitting jump.
-            if (!p.IsDead && Input.GetKeyDown("space"))
+            if (!p.IsDead && Input.GetKey("space"))
             {
                 p.photonView.RPC("Jump", RpcTarget.All);
                 fallingSpeed = jumpStrength;
