@@ -275,6 +275,11 @@ public class FpsController : MonoBehaviourPun
             if (smr) smr.enabled = !smr.enabled;
         }
 
+        if (Input.GetKeyDown("b"))
+        {
+            FindObjectOfType<UI_commandWindow>().photonView.RPC("HandleCommand",RpcTarget.MasterClient, "BOT");
+        }
+
         // healing
         p.isHealing = Input.GetKey("h");
         #endregion
