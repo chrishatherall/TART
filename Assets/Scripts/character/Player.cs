@@ -500,14 +500,14 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         if (ani) ani.enabled = !ragdoll;
     }
 
-    // Instantly kills this player (if local)
+    // Instantly kills this player. This is called on all clients when an explosion instantly kills someone, to replicate the ragdoll nicely.
     public void Kill(Vector3 hitDirection, List<BodyPart> ragdollBodyParts)
     {
-        if (!photonView.IsMine)
-        {
-            lm.LogError(logSrc, "Tried to Kill a non-local player");
-            return;
-        }
+        //if (!photonView.IsMine)
+        //{
+        //    lm.LogError(logSrc, "Tried to Kill a non-local player");
+        //    return;
+        //}
         IsDead = true;
         // Ragdoll should be enabled now that we're dead, so apply hit force
         foreach (BodyPart bp in ragdollBodyParts)
