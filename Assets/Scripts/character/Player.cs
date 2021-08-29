@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -494,6 +494,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             rb.isKinematic = !ragdoll;
             rb.useGravity = ragdoll;
         }
+
+        // If we're a local player we need to turn our controller off. TODO I don't like this being here but it needs to be off before we apply ragdoll
+        if (charCon) charCon.enabled = !ragdoll;
 
         // Find an Animator and turn it off
         Animator ani = GetComponent<Animator>();
