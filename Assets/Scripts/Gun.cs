@@ -86,6 +86,7 @@ public class Gun : MonoBehaviourPun
 
         this.transform.parent = owner.itemAnchor.transform;
         this.transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
+        this.transform.localPosition = Vector3.zero;
         owner.heldItem = this.gameObject;
         owner.heldItemScript = this.GetComponent<HeldItem>();
 

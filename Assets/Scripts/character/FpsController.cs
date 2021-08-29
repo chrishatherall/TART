@@ -362,7 +362,7 @@ public class FpsController : MonoBehaviourPun
     }
 
     // TODO should be on player
-    void TryPickupItem (GameObject item)
+    void TryPickupItem(GameObject item)
     {
         // If the player is already holding an item, drop it before picking up the new one
         if (p.heldItem)
@@ -378,10 +378,10 @@ public class FpsController : MonoBehaviourPun
 
         if (!item || !PV || !pickup)
         {
-            lm.LogError(logSrc,$"player {p.ID} tried to pick up missing item");
+            lm.LogError(logSrc, $"player {p.ID} tried to pick up missing item");
             return;
         }
-        lm.Log(logSrc,$"player {p.ID} is picking up {pickup.nickname}");
+        lm.Log(logSrc, $"player {p.ID} is picking up {pickup.nickname}");
 
         // Play sound if the pickup has one
         if (pickup.pickupSound)
@@ -400,14 +400,12 @@ public class FpsController : MonoBehaviourPun
         }
 
         // Create new item in our hands
-        GameObject newItem = PhotonNetwork.Instantiate(pickup.prefabHeld.name, p.itemAnchor.transform.position, Quaternion.identity);
+        GameObject newItem = PhotonNetwork.Instantiate(pickup.prefabHeld.name, p.itemAnchor.transform.position, Quaternion.identity, 0, new object[]{ p.ID });
 
         // Server should destroy the original
         GameManager.gm.photonView.RPC("DestroyItem", RpcTarget.MasterClient, PV.ViewID);
 
         // TODO items with an audio source should be set to 2d spatial blend so the sound doesn't favour one speaker (annoying)
-        // Setup the gun by giving it an owner id
-        newItem.GetComponent<HeldItem>().OwnerPlayerId = p.ID;
 
         // TODO define this layer somewhere. Does this even work properly?
         newItem.layer = 7;

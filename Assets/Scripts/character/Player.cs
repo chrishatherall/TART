@@ -157,7 +157,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     public float sSinceLastHeal = 0f;
     public float sHealInterval = 1f;
 
-    void Start()
+    void Awake()
     {
         // GM might not be ready yet.
         if (!gm)
@@ -183,6 +183,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         itemAnchorParent = itemAnchor.transform.parent;
         itemAnchorParentHeadDiff = itemAnchorParent.transform.position- topOfHead.transform.position;
 
+        // Set ID/actorNumber to the same as our controlling player number
+        actorNumber = photonView.ControllerActorNr;
+
         // Set as ready, and apply nickname when the local player has loaded
         if (photonView.IsMine)
         {
@@ -196,7 +199,6 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
                 // Turn off our skinned mesh renderer
                 if (bodySkinnedMesh) bodySkinnedMesh.enabled = false;
 
-                actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
                 nickname = PhotonNetwork.LocalPlayer.NickName;
                 SetLayer(7); // Set to localplayer layer
             }
