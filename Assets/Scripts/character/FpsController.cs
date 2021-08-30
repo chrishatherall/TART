@@ -55,6 +55,8 @@ public class FpsController : MonoBehaviourPun
     // Strength of a jump.
     [SerializeField]
     float jumpStrength = 6f;
+    // last input, used when in the air
+    Vector3 lastInput = Vector3.zero;
 
     // Create a layermask which ignores layer 7, so we dont constantly activate ourselves
     int layermask = ~(1 << 7);
@@ -216,6 +218,22 @@ public class FpsController : MonoBehaviourPun
         Vector3 forward = p.frontBackMovement * transform.forward;
         Vector3 moveDirection = forward + strafe;
         moveDirection *= speed;
+
+        if (charCon.isGrounded)
+        {
+            lastInput = moveDirection;
+        } else
+        {
+            // If we're in the air, use the lastInput 
+            moveDirection = lastInput;
+            // Amend the lastInput to give _some_ air control
+            moveDirection += 2f * (forward + strafe);
+            // Ensure movement speed doesn't hit max
+            moveDirection = Vector3.ClampMagnitude(moveDirection, speed);
+
+            // TODO also we should code our own accelleration and not use horizontal/vertical input, that allows more 
+            // control and to fix the max-speed-when-hitting-ground issue.
+        }
 
         // Half speed if crouching or shift-walking
         if (p.IsCrouching || Input.GetKey(KeyCode.LeftShift))
