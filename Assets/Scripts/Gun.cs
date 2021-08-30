@@ -95,7 +95,7 @@ public class Gun : MonoBehaviourPun
         if (photonView.IsMine)
         {
             fpsController = GetComponentInParent<FpsController>();
-            cam = fpsController.playerCamera;
+            cam = fpsController.cam;
             GetComponent<AudioSource>().spatialBlend = 0f;
         }
     }

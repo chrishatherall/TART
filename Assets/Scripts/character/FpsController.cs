@@ -18,7 +18,7 @@ public class FpsController : MonoBehaviourPun
 
     #region Camera Movement Variables
     // Ref to camera component
-    public Camera playerCamera;
+    public Camera cam;
     // Public variables
     public float fov = 60f;
     public bool invertCamera = false;
@@ -61,11 +61,12 @@ public class FpsController : MonoBehaviourPun
     // Range at which we can activate buttons/doors
     [SerializeField]
     float activateRange = 2f;
-    // Reference to our camera
-    private Camera cam;
-    float camHeight;
     // The difference between our head height and our cam height
     float camHeadHeightDiff;
+    // The target camera position for our cam lerper. Adjusted when crouching
+    Vector3 camTargetPoint;
+    float camLerpSmoothTime = 0.1f;
+    Vector3 camLerpVelocity = Vector3.zero;
     // Reference to our player script
     public Player p;
 
@@ -131,6 +132,7 @@ public class FpsController : MonoBehaviourPun
         ccHeight = charCon.height;
         //camHeight = CamWiggleObject.transform.localPosition.y;
         camHeadHeightDiff = p.topOfHead.transform.position.y - CamWiggleObject.transform.position.y;
+        camTargetPoint = CamWiggleObject.transform.localPosition;
     }
 
     // Update is called once per frame
@@ -156,7 +158,7 @@ public class FpsController : MonoBehaviourPun
         // Set y rotation of player object
         transform.localEulerAngles = new Vector3(0, yaw, 0);
         // Set x rotation of camera object
-        playerCamera.transform.localEulerAngles = new Vector3(pitch, 0, 0);
+        cam.transform.localEulerAngles = new Vector3(pitch, 0, 0);
 
         // Reduce camera wiggle
         // BIG NOTE: This is about camera wiggle, NOT gun recoil. Gun recoil uses this as a base, but has its own firing inaccuracy.
@@ -169,6 +171,7 @@ public class FpsController : MonoBehaviourPun
         // Reduce wiggle value
         _camWiggle = Mathf.Clamp(_camWiggle - reduction * Time.deltaTime, 0f, 100f);
         CamWiggleObject.transform.localRotation = rotAmount;
+        CamWiggleObject.transform.localPosition = Vector3.SmoothDamp(CamWiggleObject.transform.localPosition, camTargetPoint, ref camLerpVelocity, camLerpSmoothTime);
         #endregion
 
         #region Crouching
@@ -177,7 +180,7 @@ public class FpsController : MonoBehaviourPun
             p.IsCrouching = true;
             charCon.height = ccHeight * p.crouchHeightMultiplier;
             charCon.center = new Vector3(0f, charCon.height / 2, 0f);
-            CamWiggleObject.transform.position = new Vector3(CamWiggleObject.transform.position.x, p.topOfHead.transform.position.y - camHeadHeightDiff, CamWiggleObject.transform.position.z);
+            camTargetPoint = new Vector3(camTargetPoint.x, p.topOfHead.transform.localPosition.y - camHeadHeightDiff, camTargetPoint.z);
         }
         if (p.IsCrouching && !Input.GetKey(KeyCode.LeftControl))
         {
@@ -188,7 +191,7 @@ public class FpsController : MonoBehaviourPun
                 p.IsCrouching = false;
                 charCon.center = new Vector3(0f, ccHeight / 2, 0f);
                 charCon.height = ccHeight;
-                CamWiggleObject.transform.position = new Vector3(CamWiggleObject.transform.position.x, p.topOfHead.transform.position.y - camHeadHeightDiff, CamWiggleObject.transform.position.z);
+                camTargetPoint = new Vector3(camTargetPoint.x, p.topOfHead.transform.localPosition.y - camHeadHeightDiff, camTargetPoint.z);
             }
         }
         #endregion
