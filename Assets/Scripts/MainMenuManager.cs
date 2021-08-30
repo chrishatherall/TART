@@ -26,7 +26,7 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 	
 	[Tooltip("The Ui element containing the room code")]
 	[SerializeField]
-	private Text roomCodeTextbox;
+	private InputField roomCodeTextbox;
 
     [Tooltip("The Ui Text to inform the user about the connection progress")]
     [SerializeField]
@@ -82,7 +82,18 @@ public class MainMenuManager : MonoBehaviourPunCallbacks
 		versionText.text = Application.version;
 
 		Cursor.lockState = CursorLockMode.None;
+
 	}
+
+	public void HandleRoomCodeEndEdit()
+    {
+		// Ending the edit can be caused by either hitting enter or clicking off the input field.
+		// We only want the enters
+		if (Input.GetKey(KeyCode.Return))
+        {
+			Join();
+        }
+    }
 
 	/// <summary>
 	/// Start the connection process. 
