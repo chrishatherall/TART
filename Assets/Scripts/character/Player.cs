@@ -74,11 +74,6 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     public HeldItem heldItemScript;
     // The item anchor gameobject
     public GameObject itemAnchor;
-    // The parent of the held-item anchor we need to move up/down when crouching
-    Transform itemAnchorParent;
-    // The difference in position between our item anchor parent and topOfHead. Used to calculate crouched position
-    Vector3 itemAnchorParentHeadDiff;
-
 
     public AudioSource audioSrc;
     [SerializeField]
@@ -125,14 +120,10 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
                     _isCrouching = true;
                     // Lower the top of our head to crouching height (which is half)
                     topOfHead.transform.localPosition = standingHeadPos * crouchHeightMultiplier;
-                    // Keep our item anchor relative to the top of the head
-                    itemAnchorParent.transform.position = topOfHead.transform.position + itemAnchorParentHeadDiff;
                 } else {
                     _isCrouching = false;
                     // Raise the top of our head to standing height
                     topOfHead.transform.localPosition = standingHeadPos;
-                    // Keep our item anchor relative to the top of the head
-                    itemAnchorParent.transform.position = topOfHead.transform.position + itemAnchorParentHeadDiff;
                 }
             }
             
@@ -179,9 +170,6 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
         // Set our standing head height to whatever it is when we spawned
         standingHeadPos = topOfHead.transform.localPosition;
-        // Set our standing itemAnchorHeight
-        itemAnchorParent = itemAnchor.transform.parent;
-        itemAnchorParentHeadDiff = itemAnchorParent.transform.position- topOfHead.transform.position;
 
         // Set ID/actorNumber to the same as our controlling player number
         actorNumber = photonView.ControllerActorNr;
