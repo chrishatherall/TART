@@ -183,8 +183,15 @@ public class FpsController : MonoBehaviourPun
             charCon.height = ccHeight * p.crouchHeightMultiplier;
             charCon.center = new Vector3(0f, charCon.height / 2, 0f);
             camTargetPoint = new Vector3(camTargetPoint.x, p.topOfHead.transform.localPosition.y - camHeadHeightDiff, camTargetPoint.z);
+            // If in the air, raise our transform position by the same amount we move the camera down
+            if (!charCon.isGrounded)
+            {
+                charCon.Move(new Vector3(0f, ccHeight - charCon.height, 0f));
+                // Immediately set camera to new position
+                CamWiggleObject.transform.localPosition = camTargetPoint;
+            }
         }
-        if (p.IsCrouching && !Input.GetKey(KeyCode.LeftControl))
+        if (p.IsCrouching && !Input.GetKey(KeyCode.LeftControl) && charCon.isGrounded) // Do not allow uncrouching in the air
         {
             // check to see if we can uncrouch, by casting a ray up and seeing if it's clear
             bool canUncrouch = !Physics.Raycast(p.topOfHead.transform.position, Vector3.up, out RaycastHit crouchHit, ccHeight/2, layermask);
