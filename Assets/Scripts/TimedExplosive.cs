@@ -98,8 +98,8 @@ public class TimedExplosive : MonoBehaviourPun
 
         // Destroy the physical object that exploded
         if (physicalObject) Destroy(physicalObject);
-        // Destroy rigidbody so our explosion doesn't run away
+        // Disable rigidbody so our explosion doesn't run away
         Rigidbody rb = GetComponent<Rigidbody>();
-        if (rb) Destroy(rb);        
+        if (rb) rb.isKinematic = true;
     }
 }

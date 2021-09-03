@@ -16,7 +16,7 @@ public class HeldItem : MonoBehaviour, IPunInstantiateMagicCallback
 
     public GameObject rightHandIKAnchor;
 
-    public void OnPhotonInstantiate(PhotonMessageInfo info) // TODO should be called by photon in helditem
+    public void OnPhotonInstantiate(PhotonMessageInfo info)
     {
         object[] instantiationData = info.photonView.InstantiationData;
         SendMessage("SetOwner", int.Parse(instantiationData[0].ToString()));

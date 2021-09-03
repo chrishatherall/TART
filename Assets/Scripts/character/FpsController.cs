@@ -482,7 +482,7 @@ public class FpsController : MonoBehaviourPun
         if (!PhotonNetwork.IsMasterClient) return;
         lm.Log(logSrc,$"Player {p.ID} dropping item {prefabName}");
         // Create item being dropped
-        GameObject go = PhotonNetwork.InstantiateRoomObject(prefabName, cam.transform.position, transform.rotation);
+        GameObject go = PhotonNetwork.InstantiateRoomObject(prefabName, cam.transform.position, transform.rotation, 0, new object[] { p.ID });
         if (!go) return; // Account for errors when instantiating objects
         // Add some force so it moves away from the player who dropped it
         Rigidbody rb = go.GetComponent<Rigidbody>();

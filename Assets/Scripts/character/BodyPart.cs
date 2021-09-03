@@ -18,6 +18,9 @@ public class BodyPart : MonoBehaviour
     [SerializeField]
     ParticleSystem ps;
 
+    // Ref to the collider
+    new public Collider collider;
+
     public int Damage { 
         get => damage; 
         set => damage = value;
@@ -42,6 +45,7 @@ public class BodyPart : MonoBehaviour
     void Start()
     {
         p = GetComponentInParent<Player>();
+        collider = GetComponent<Collider>();
         // Warn if ps isn't set. Add bone name.
         if (!ps) lm.LogError(logSrc, "Missing particle system reference on " + this.name);
     }

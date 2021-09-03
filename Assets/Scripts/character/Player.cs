@@ -67,7 +67,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     public event EmptyEvent OnJump;
 
     // Our body parts
-    BodyPart[] bodyParts;
+    public BodyPart[] bodyParts;
 
     // Our held item, and script
     public GameObject heldItem;
