@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
@@ -454,8 +454,10 @@ public class FpsController : MonoBehaviourPun
     // Drops an item into the world
     public void TryDropItem (string prefabName)
     {
-        // Tell server we're dropping our held item.
+        // Tell server we're dropping an item.
         photonView.RPC("RpcDropItem", RpcTarget.MasterClient, prefabName);
+        // Do throw visuals on all clients
+        photonView.RPC("DoThrowVisuals", RpcTarget.All);
     }
 
     // Checks to see if we can place an item at our current looking point, considering a maximum distance.

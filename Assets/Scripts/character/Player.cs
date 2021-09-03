@@ -85,6 +85,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     [SerializeField]
     AudioClip deathSound;
 
+    [SerializeField]
+    AudioClip throwSound;
+
     // Ref to the skinned mesh renderer. Disabled locally if alive, otherwise enabled
     [SerializeField]
     SkinnedMeshRenderer bodySkinnedMesh;
@@ -371,6 +374,13 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     {
         // Play sound
         if (audioSrc && healSound) audioSrc.PlayOneShot(healSound);
+    }
+
+    [PunRPC]
+    public void DoThrowVisuals()
+    {
+        // Play sound
+        if (audioSrc && throwSound) audioSrc.PlayOneShot(throwSound);
     }
 
     // Ticks happen once a second. Why though? Is it so we reduce network sync traffic?
