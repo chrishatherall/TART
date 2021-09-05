@@ -12,8 +12,6 @@ public class Gun : MonoBehaviourPun
 {
     readonly string logSrc = "GUN";
 
-
-
     // Model recoil while shooting
     // Save the default model and max-recoil position (which will be Vector3.zero)
     // When shooting, we'll lerp between these two, based on firing time.
@@ -75,6 +73,13 @@ public class Gun : MonoBehaviourPun
     ParticleSystem ps;
     // Ref to our player owner
     Player p;
+    // Ref to our own helditem script
+    HeldItem heldItemScript;
+
+    void Awake()
+    {
+        heldItemScript = this.GetComponent<HeldItem>();
+    }
 
     // Called by the HeldItem script when the owner is set
     public void SetOwner(int ownerPlayerId)
@@ -90,7 +95,7 @@ public class Gun : MonoBehaviourPun
         this.transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
         this.transform.localPosition = Vector3.zero;
         p.heldItem = this.gameObject;
-        p.heldItemScript = this.GetComponent<HeldItem>();
+        p.heldItemScript = heldItemScript;
 
         // If we're setting up for ourselves, set audio emitter to 2d so the gun firing noise 
         // doesn't annoyingly favour one ear.

@@ -445,7 +445,7 @@ public class FpsController : MonoBehaviourPun
     // Drops our held item into the world. Called when we press G or on death
     public void TryDropHeldItem ()
     {
-        if (!p.heldItem) return;
+        if (!p.heldItem || !p.heldItemScript) return;
         TryDropItem(p.heldItemScript.worldPrefab.name);
         // Destroy the item in our hands.
         PhotonNetwork.Destroy(p.heldItem);
