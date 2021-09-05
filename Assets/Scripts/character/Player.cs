@@ -539,9 +539,58 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     // Called when when isdead is set to true
     void Die()
     {
-        lm.Log(logSrc, $"{nickname} died.");
+
 
         SetRagdoll(true);
+
+        // Determine cause of death
+        // As you can't currently restore lost oil, the person who killed us is the person who dealt the most BP damage, unless instant killed
+        string murdererName;
+        int murdererID = 0;
+        string causeOfDeath;
+        if (diedToInstantDeath)
+        {
+            Player murderer = gm.GetPlayerByID(instantDeathPlayer);
+            murdererName = murderer ? murderer.nickname : "Unknown";
+            murdererID = instantDeathPlayer;
+            causeOfDeath = "Instant"; // TODO this should be the weapon but we don't support that yet
+        }
+        else
+        {
+            // Calculate killer by bp damage
+            // Merge all bodypart damages
+            List<Damage> sumDamages = new List<Damage>();
+            foreach (BodyPart bp in bodyParts)
+            {
+                foreach (Damage D in bp.Damages)
+                {
+                    // Find an entry in sumDamages for this player id
+                    Damage existing = sumDamages.FirstOrDefault(ED => ED.SourcePlayerID == D.SourcePlayerID);
+                    if (existing != null)
+                    {
+                        existing.Amount += D.Amount;
+                    }
+                    else
+                    {
+                        sumDamages.Add(D);
+                    }
+                }
+            }
+            // Find the biggest damage dealer
+            Damage murderer = sumDamages[0];
+            foreach (Damage D in sumDamages)
+            {
+                if (D.Amount > murderer.Amount) murderer = D;
+            }
+            murdererName = gm.GetPlayerByID(murderer.SourcePlayerID).nickname;
+            murdererID = murderer.SourcePlayerID;
+            causeOfDeath = "Oil Loss";
+        }
+        // Raise a death event
+        object[] args = { ID, murdererID, causeOfDeath };
+        gm.RaiseEvent(Events.PlayerDied, args);
+
+        lm.Log(logSrc, $"[{ID}]{nickname} was killed by [{murdererID}]{murdererName} via {causeOfDeath}.");
 
         // We don't need to do anything else if this isn't our player
         if (!this.photonView.IsMine) return;
@@ -562,43 +611,6 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             gm.DeadScreen.SetActive(true);
 
             // Set dead screen message
-            // As you can't currently restore lost oil, the person who killed us is the person who dealt the most BP damage, unless instant killed
-            string murdererName;
-            string causeOfDeath;
-            if (diedToInstantDeath)
-            {
-                Player murderer = gm.GetPlayerByID(instantDeathPlayer);
-                murdererName = murderer ? murderer.nickname : "Unknown";
-                causeOfDeath = "Instant"; // TODO this should be the weapon but we don't support that yet
-            } else
-            {
-                // Calculate killer by bp damage
-                // Merge all bodypart damages
-                List<Damage> sumDamages = new List<Damage>();
-                foreach (BodyPart bp in bodyParts)
-                {
-                    foreach (Damage D in bp.Damages)
-                    {
-                        // Find an entry in sumDamages for this player id
-                        Damage existing = sumDamages.FirstOrDefault(ED => ED.SourcePlayerID == D.SourcePlayerID);
-                        if (existing != null) {
-                            existing.Amount += D.Amount;
-                        } else
-                        {
-                            sumDamages.Add(D);
-                        }
-                    }
-                }
-                // Find the biggest damage dealer
-                Damage murderer = sumDamages[0];
-                foreach (Damage D in sumDamages)
-                {
-                    if (D.Amount > murderer.Amount) murderer = D;
-                }
-                murdererName = gm.GetPlayerByID(murderer.SourcePlayerID).nickname;
-                causeOfDeath = "Oil Loss";
-
-            }
             gm.DeathDetailsText.text = $"Killed by {murdererName} via {causeOfDeath}";
 
             // Activate mouse

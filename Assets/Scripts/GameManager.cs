@@ -23,17 +23,6 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         Active,
         PostRound
     }
-    // Events for STUFF happening. This should contain loads of things, so we can easily make weird weapons and items.
-    public enum Events
-    {
-        AutoSomething,
-        Preround,     // Preround started
-        RoundStart,   // A round began
-        Postround,    // A round ended, postround began
-        InnocentWin,
-        TraitorWin,
-        PlayerDied    // A player died during a round
-    }
 
     // Set static for easy reference in other scripts.
     public static GameManager gm;

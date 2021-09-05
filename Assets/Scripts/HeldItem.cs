@@ -18,8 +18,7 @@ public class HeldItem : MonoBehaviour, IPunInstantiateMagicCallback
 
     public void OnPhotonInstantiate(PhotonMessageInfo info)
     {
-        object[] instantiationData = info.photonView.InstantiationData;
-        SendMessage("SetOwner", int.Parse(instantiationData[0].ToString()));
+        SendMessage("SetOwner", info.photonView.OwnerActorNr);
     }
 
     // Sets values from the fps controller that an item could use. TODO maybe use setters?

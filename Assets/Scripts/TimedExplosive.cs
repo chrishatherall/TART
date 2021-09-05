@@ -8,7 +8,7 @@ using static LogManager;
 // Causes an explosion after the time runs out
 
 [RequireComponent(typeof(AudioSource))]
-public class TimedExplosive : MonoBehaviourPun
+public class TimedExplosive : MonoBehaviourPun, IPunInstantiateMagicCallback
 {
     readonly string logSrc = "T_EXPL";
 
@@ -29,10 +29,12 @@ public class TimedExplosive : MonoBehaviourPun
 
     bool hasExploded = false;
 
-    // Start is called before the first frame update
-    void Start()
+    // Id of the player who spawned us
+    public int ownerPlayerID;
+
+    public void OnPhotonInstantiate(PhotonMessageInfo info)
     {
-        
+        ownerPlayerID = info.photonView.OwnerActorNr;
     }
 
     // Update is called once per frame
@@ -92,7 +94,7 @@ public class TimedExplosive : MonoBehaviourPun
                 if (distance > explosionRadius) break;
                 int damage = Mathf.RoundToInt(explosionDamage * (1 - distance / explosionRadius));
                 float force = explosionForce * (1 - distance / explosionRadius);
-                if (p) p.photonView.RPC("DamageBone", Photon.Pun.RpcTarget.All, de.Value.ToString(), damage, Vector3.Normalize(p.transform.position + new Vector3(0f, 1f, 0f) - this.transform.position) * force, -1); // Note: use roughly the chest of the player so they are thrown upwards
+                if (p) p.photonView.RPC("DamageBone", Photon.Pun.RpcTarget.All, de.Value.ToString(), damage, Vector3.Normalize(p.transform.position + new Vector3(0f, 1f, 0f) - this.transform.position) * force, ownerPlayerID); // Note: use roughly the chest of the player so they are thrown upwards
             }
         }
 

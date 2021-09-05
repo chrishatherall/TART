@@ -428,7 +428,7 @@ public class FpsController : MonoBehaviourPun
         }
 
         // Create new item in our hands
-        GameObject newItem = PhotonNetwork.Instantiate(pickup.prefabHeld.name, p.itemAnchor.transform.position, Quaternion.identity, 0, new object[]{ p.ID });
+        GameObject newItem = PhotonNetwork.Instantiate(pickup.prefabHeld.name, p.itemAnchor.transform.position, Quaternion.identity);
 
         // Server should destroy the original
         GameManager.gm.photonView.RPC("DestroyItem", RpcTarget.MasterClient, PV.ViewID);
@@ -484,7 +484,7 @@ public class FpsController : MonoBehaviourPun
         if (!PhotonNetwork.IsMasterClient) return;
         lm.Log(logSrc,$"Player {p.ID} dropping item {prefabName}");
         // Create item being dropped
-        GameObject go = PhotonNetwork.InstantiateRoomObject(prefabName, cam.transform.position, transform.rotation, 0, new object[] { p.ID });
+        GameObject go = PhotonNetwork.InstantiateRoomObject(prefabName, cam.transform.position, transform.rotation);
         if (!go) return; // Account for errors when instantiating objects
         // Add some force so it moves away from the player who dropped it
         Rigidbody rb = go.GetComponent<Rigidbody>();
