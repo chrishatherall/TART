@@ -116,7 +116,7 @@ public class UI_commandWindow : MonoBehaviourPun
 
             case "KILL":
                 // Currently you can only kill your own player
-                p.photonView.RPC("TakeDamage", RpcTarget.All, 999);
+                p.photonView.RPC("InstaKill", RpcTarget.All, 999);
                 break;
 
             case "ROUNDRESTART":

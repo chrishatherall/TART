@@ -73,22 +73,24 @@ public class Gun : MonoBehaviourPun
     // Ref to the particle emitter
     [SerializeField]
     ParticleSystem ps;
+    // Ref to our player owner
+    Player p;
 
     // Called by the HeldItem script when the owner is set
     public void SetOwner(int ownerPlayerId)
     {
-        Player owner = GameManager.gm.GetPlayerByID(ownerPlayerId);
-        if (!owner)
+        p = GameManager.gm.GetPlayerByID(ownerPlayerId);
+        if (!p)
         {
             lm.LogError(logSrc,"Gun setup could not find player " + ownerPlayerId);
             return;
         }
 
-        this.transform.parent = owner.itemAnchor.transform;
+        this.transform.parent = p.itemAnchor.transform;
         this.transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
         this.transform.localPosition = Vector3.zero;
-        owner.heldItem = this.gameObject;
-        owner.heldItemScript = this.GetComponent<HeldItem>();
+        p.heldItem = this.gameObject;
+        p.heldItemScript = this.GetComponent<HeldItem>();
 
         // If we're setting up for ourselves, set audio emitter to 2d so the gun firing noise 
         // doesn't annoyingly favour one ear.
@@ -164,8 +166,10 @@ public class Gun : MonoBehaviourPun
             if (bp)
             {
                 // If we hit a bodypart, send an rpc to the parent player object 
-                bp.p.photonView.RPC("TakeDamage", RpcTarget.All, damage, bp.name, bulletDirection * shotForce);
+                bp.TakeDamage(damage, bulletDirection * shotForce, p.ID);
             }
+
+            // TODO try a sendmessage(takedamage) instead
 
             // Check if the object we hit has a rigidbody attached
             //if (hit.rigidbody != null)

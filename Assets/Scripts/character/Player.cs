@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Photon.Pun;
-using tart;
+using TART;
 using static GameManager;
 using static LogManager;
 
@@ -151,6 +151,10 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     public float sSinceLastHeal = 0f;
     public float sHealInterval = 1f;
 
+    // Cause of death
+    bool diedToInstantDeath = false;
+    int instantDeathPlayer = -1;
+
     void Awake()
     {
         // GM might not be ready yet.
@@ -274,22 +278,26 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         oil = 100;
         maxOil = 100;
         // Set damage of each BodyPart to 0
-        foreach(BodyPart bp in bodyParts) { bp.Damage = 0; }
+        foreach(BodyPart bp in bodyParts) { bp.Reset(); }
         IsDead = false;
         this._role = gm.GetRoleFromID(0);
 
         SetRagdoll(false);
 
+        diedToInstantDeath = false;
+        instantDeathPlayer = -1;
+
         // Kind of a dirty fix, but works until we have a UI manager.
         if (photonView.IsMine) Cursor.lockState = CursorLockMode.Locked;
     }
 
+    // Called from a remote/local BodyPart script when it is damaged.
     [PunRPC]
-    public void TakeDamage(int dmg, string bodyPartNamesString, Vector3 hitDirection)
+    public void DamageBone(string bodyPartNamesString, int dmg, Vector3 hitDirection, int sourcePlayerID)
     {
         lm.Log(logSrc, $"Taking damage of {dmg} to bodyparts {bodyPartNamesString}");
         // Don't deal with damage if we don't own this player
-        //if (!photonView.IsMine) return; // TODO TEMPORARILY do this on all clients for the visuals, need proper BodyPart syncing
+        //if (!photonView.IsMine) return; // TODO TEMPORARILY do this on all clients for the visuals, need proper BodyPart syncing to avoid doing this one all clients
 
         // Can't take more damage if we're dead
         if (IsDead) return;
@@ -307,40 +315,42 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             {
                 bodyParts.Add(bp);
                 // Apply damage to the BodyPart
-                bp.Damage += dmg;
+                //bp.Damage += dmg; // here we would call a method and pass damage+playerid. This would allow special bodyparts to adjust damage.
+                bp.AddDamage(dmg, sourcePlayerID);
             }
         }
 
         // To make damage more responsive, kill player instantly if damage > oil, and hit the ragdoll with hitDirection force
         if (GetDamage() > oil)
         {
-            Kill(hitDirection, bodyParts);
+            Kill(hitDirection, bodyParts, sourcePlayerID);
         }
     }
 
     // This is to allow the server to kill a player easily
     [PunRPC]
-    public void TakeDamage(int dmg)
+    public void InstaKill(int dmg)
     {
-        TakeDamage(dmg, "B-head", Vector3.up);
+        DamageBone("B-head", dmg, Vector3.up, -1); // Source of the damage is player -1, essentially nobody
     }
 
+    // TODO only heals 1 at a time. Ideally should distribute the healing to all BPs that need it, ratiod
     public void Heal(int amount)
     {
         // Run loop once for each heal amount
-        int healedParts = 0;
+        int healedAmount = 0;
         for (int i = 0; i < amount; i++)
         {
             // Get a bodypart with damage
-            BodyPart bp = bodyParts.FirstOrDefault(bp => bp.Damage > 0);
+            BodyPart bp = bodyParts.FirstOrDefault(bp => bp.CurrentDamage > 0);
             if (!bp) break;
             // Reduce damage by 1
-            bp.Damage--;
-            healedParts++;
+            bp.RemoveDamage(1);
+            healedAmount++;
         }
 
         // Do visuals if we healed anything
-        if (healedParts > 0) photonView.RPC("DoHealVisuals", RpcTarget.All);
+        if (healedAmount > 0) photonView.RPC("DoHealVisuals", RpcTarget.All);
     }
 
     void DoFootstep(float volumeMultiplier)
@@ -453,7 +463,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         string[] bpData = new string[bodyParts.Length];
         for (int i = 0; i < bodyParts.Length; i++)
         {
-            bpData[i] = bodyParts[i].gameObject.name + ":" + bodyParts[i].Damage;
+            bpData[i] = bodyParts[i].Serialise(); //bodyParts[i].gameObject.name + ":" + bodyParts[i].Damage;
         }
         return string.Join("/", bpData);
     }
@@ -468,20 +478,20 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         {
             string[] split = part.Split(':');
             // Find a BodyPart by name of split[0]
-            
+            // bp-head:1001:4:1002:8
             BodyPart bp = GetBodyPartByName(split[0]);
             if (!bp)
             {
                 lm.LogError(logSrc, $"Error deserialising BodyPart damage, invalid part name. Data: '{data}'");
                 return;
             }
-            bp.Damage = int.Parse(split[1]);
+            bp.Deserialise(part);
         }
     }
 
     public int GetDamage()
     {
-        return bodyParts.Sum(bp => bp.Damage);
+        return bodyParts.Sum(bp => bp.CurrentDamage);
     }
 
     // Turns ragdoll on/off
@@ -503,9 +513,12 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         if (ani) ani.enabled = !ragdoll;
     }
 
-    // Instantly kills this player. This is called on all clients when an explosion instantly kills someone, to replicate the ragdoll nicely.
-    public void Kill(Vector3 hitDirection, List<BodyPart> ragdollBodyParts)
+    // Instantly kills this player. This is called on all clients when something instantly kills someone, to replicate the ragdoll nicely.
+    // TODO This seems messy
+    public void Kill(Vector3 hitDirection, List<BodyPart> ragdollBodyParts, int playerID)
     {
+        diedToInstantDeath = true;
+        instantDeathPlayer = playerID;
         //if (!photonView.IsMine)
         //{
         //    lm.LogError(logSrc, "Tried to Kill a non-local player");
@@ -547,8 +560,47 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         {
             // Turn on the dead screen
             gm.DeadScreen.SetActive(true);
+
             // Set dead screen message
-            //gm.DeathDetailsText.text = $"Killed by {source} with {method}";
+            // As you can't currently restore lost oil, the person who killed us is the person who dealt the most BP damage, unless instant killed
+            string murdererName;
+            string causeOfDeath;
+            if (diedToInstantDeath)
+            {
+                Player murderer = gm.GetPlayerByID(instantDeathPlayer);
+                murdererName = murderer ? murderer.nickname : "Unknown";
+                causeOfDeath = "Instant"; // TODO this should be the weapon but we don't support that yet
+            } else
+            {
+                // Calculate killer by bp damage
+                // Merge all bodypart damages
+                List<Damage> sumDamages = new List<Damage>();
+                foreach (BodyPart bp in bodyParts)
+                {
+                    foreach (Damage D in bp.Damages)
+                    {
+                        // Find an entry in sumDamages for this player id
+                        Damage existing = sumDamages.FirstOrDefault(ED => ED.SourcePlayerID == D.SourcePlayerID);
+                        if (existing != null) {
+                            existing.Amount += D.Amount;
+                        } else
+                        {
+                            sumDamages.Add(D);
+                        }
+                    }
+                }
+                // Find the biggest damage dealer
+                Damage murderer = sumDamages[0];
+                foreach (Damage D in sumDamages)
+                {
+                    if (D.Amount > murderer.Amount) murderer = D;
+                }
+                murdererName = gm.GetPlayerByID(murderer.SourcePlayerID).nickname;
+                causeOfDeath = "Oil Loss";
+
+            }
+            gm.DeathDetailsText.text = $"Killed by {murdererName} via {causeOfDeath}";
+
             // Activate mouse
             Cursor.lockState = CursorLockMode.None;
         }

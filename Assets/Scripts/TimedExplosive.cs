@@ -92,7 +92,7 @@ public class TimedExplosive : MonoBehaviourPun
                 if (distance > explosionRadius) break;
                 int damage = Mathf.RoundToInt(explosionDamage * (1 - distance / explosionRadius));
                 float force = explosionForce * (1 - distance / explosionRadius);
-                if (p) p.photonView.RPC("TakeDamage", Photon.Pun.RpcTarget.All, damage, de.Value.ToString(), Vector3.Normalize(p.transform.position + new Vector3(0f, 1f, 0f) - this.transform.position) * force); // Note: use roughly the chest of the player so they are thrown upwards
+                if (p) p.photonView.RPC("DamageBone", Photon.Pun.RpcTarget.All, de.Value.ToString(), damage, Vector3.Normalize(p.transform.position + new Vector3(0f, 1f, 0f) - this.transform.position) * force, -1); // Note: use roughly the chest of the player so they are thrown upwards
             }
         }
 
