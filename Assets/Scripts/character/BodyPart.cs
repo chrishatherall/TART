@@ -5,7 +5,7 @@ using static LogManager;
 using TART;
 
 // Tells a parent Player script when we're damaged, and stores damage values. Controls a particle system to show damage.
-public class BodyPart : MonoBehaviour
+public class BodyPart : MonoBehaviour, IDamageTaker
 {
     readonly string logSrc = "BodyPart";
 
@@ -140,7 +140,7 @@ public class BodyPart : MonoBehaviour
 
     // This is an object that can receive damage.
     // Note: This method is always local to the damage dealer, we need to forward damage onto the player script via rpc.
-    public void TakeDamage(int dmg, Vector3 hitDirection, int sourcePlayerID) // TODO this should be an interface
+    public void TakeDamage(int dmg, Vector3 hitDirection, int sourcePlayerID)
     {
         // Also sends bone (object) name, so the Player knows which part of the body took damage
         if (p) p.photonView.RPC("DamageBone", Photon.Pun.RpcTarget.All, this.name, dmg, hitDirection, sourcePlayerID);

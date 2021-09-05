@@ -598,7 +598,6 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         // Play death sound
         audioSrc.PlayOneShot(deathSound);
 
-        if (!isBot) gm.Alert("YOU DIED");
         // TODO this might be better hooking into an event to increase modularity
         // Try to drop our held item
         FpsController fpsc = GetComponent<FpsController>();
