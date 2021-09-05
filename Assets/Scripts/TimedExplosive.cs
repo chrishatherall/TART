@@ -12,6 +12,8 @@ public class TimedExplosive : MonoBehaviourPun, IPunInstantiateMagicCallback
 {
     readonly string logSrc = "T_EXPL";
 
+    public string nickname;
+
     public float sTimeUntilExplosion;
 
     // Time after explosion until this object is remove entirely. Should be longer than the post-explosion visual effects.
@@ -94,7 +96,7 @@ public class TimedExplosive : MonoBehaviourPun, IPunInstantiateMagicCallback
                 if (distance > explosionRadius) break;
                 int damage = Mathf.RoundToInt(explosionDamage * (1 - distance / explosionRadius));
                 float force = explosionForce * (1 - distance / explosionRadius);
-                if (p) p.photonView.RPC("DamageBone", Photon.Pun.RpcTarget.All, de.Value.ToString(), damage, Vector3.Normalize(p.transform.position + new Vector3(0f, 1f, 0f) - this.transform.position) * force, ownerPlayerID); // Note: use roughly the chest of the player so they are thrown upwards
+                if (p) p.photonView.RPC("DamageBone", Photon.Pun.RpcTarget.All, de.Value.ToString(), damage, Vector3.Normalize(p.transform.position + new Vector3(0f, 1f, 0f) - this.transform.position) * force, ownerPlayerID, nickname); // Note: use roughly the chest of the player so they are thrown upwards
             }
         }
 

@@ -154,6 +154,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     // Cause of death
     bool diedToInstantDeath = false;
     int instantDeathPlayer = -1;
+    string instantDeathWeapon = "Unknown";
 
     void Awake()
     {
@@ -293,7 +294,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
     // Called from a remote/local BodyPart script when it is damaged.
     [PunRPC]
-    public void DamageBone(string bodyPartNamesString, int dmg, Vector3 hitDirection, int sourcePlayerID)
+    public void DamageBone(string bodyPartNamesString, int dmg, Vector3 hitDirection, int sourcePlayerID, string sourceWeapon)
     {
         lm.Log(logSrc, $"Taking damage of {dmg} to bodyparts {bodyPartNamesString}");
         // Don't deal with damage if we don't own this player
@@ -316,14 +317,14 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
                 bodyParts.Add(bp);
                 // Apply damage to the BodyPart
                 //bp.Damage += dmg; // here we would call a method and pass damage+playerid. This would allow special bodyparts to adjust damage.
-                bp.AddDamage(dmg, sourcePlayerID);
+                bp.AddDamage(dmg, sourcePlayerID, sourceWeapon);
             }
         }
 
         // To make damage more responsive, kill player instantly if damage > oil, and hit the ragdoll with hitDirection force
         if (GetDamage() > oil)
         {
-            Kill(hitDirection, bodyParts, sourcePlayerID);
+            Kill(hitDirection, bodyParts, sourcePlayerID, sourceWeapon);
         }
     }
 
@@ -331,7 +332,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     [PunRPC]
     public void InstaKill(int dmg)
     {
-        DamageBone("B-head", dmg, Vector3.up, -1); // Source of the damage is player -1, essentially nobody
+        DamageBone("B-head", dmg, Vector3.up, -1, "Command"); // Source of the damage is player -1, essentially nobody
     }
 
     // TODO only heals 1 at a time. Ideally should distribute the healing to all BPs that need it, ratiod
@@ -515,10 +516,11 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
     // Instantly kills this player. This is called on all clients when something instantly kills someone, to replicate the ragdoll nicely.
     // TODO This seems messy
-    public void Kill(Vector3 hitDirection, List<BodyPart> ragdollBodyParts, int playerID)
+    public void Kill(Vector3 hitDirection, List<BodyPart> ragdollBodyParts, int playerID, string sourceWeapon)
     {
         diedToInstantDeath = true;
         instantDeathPlayer = playerID;
+        instantDeathWeapon = sourceWeapon;
         //if (!photonView.IsMine)
         //{
         //    lm.LogError(logSrc, "Tried to Kill a non-local player");
@@ -545,15 +547,15 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
         // Determine cause of death
         // As you can't currently restore lost oil, the person who killed us is the person who dealt the most BP damage, unless instant killed
-        string murdererName;
+        string murdererName = "Unknown";
         int murdererID = 0;
-        string causeOfDeath;
+        string causeOfDeath = "Unknown";
         if (diedToInstantDeath)
         {
             Player murderer = gm.GetPlayerByID(instantDeathPlayer);
             murdererName = murderer ? murderer.nickname : "Unknown";
             murdererID = instantDeathPlayer;
-            causeOfDeath = "Instant"; // TODO this should be the weapon but we don't support that yet
+            causeOfDeath = instantDeathWeapon;
         }
         else
         {
@@ -577,14 +579,20 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
                 }
             }
             // Find the biggest damage dealer
-            Damage murderer = sumDamages[0];
-            foreach (Damage D in sumDamages)
+            if (sumDamages.Count == 0)
             {
-                if (D.Amount > murderer.Amount) murderer = D;
+                lm.LogError(logSrc, $"Player {nickname} died without damaged BodyParts or instant death");
+            } else
+            {
+                Damage murderer = sumDamages[0];
+                foreach (Damage D in sumDamages)
+                {
+                    if (D.Amount > murderer.Amount) murderer = D;
+                }
+                murdererName = gm.GetPlayerByID(murderer.SourcePlayerID).nickname;
+                murdererID = murderer.SourcePlayerID;
+                causeOfDeath = "Oil Loss";
             }
-            murdererName = gm.GetPlayerByID(murderer.SourcePlayerID).nickname;
-            murdererID = murderer.SourcePlayerID;
-            causeOfDeath = "Oil Loss";
         }
         // Raise a death event
         object[] args = { ID, murdererID, causeOfDeath };

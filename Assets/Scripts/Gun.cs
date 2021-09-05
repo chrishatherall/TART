@@ -166,7 +166,7 @@ public class Gun : MonoBehaviourPun
             if (bp)
             {
                 // If we hit a bodypart, send an rpc to the parent player object 
-                bp.TakeDamage(damage, bulletDirection * shotForce, p.ID);
+                bp.TakeDamage(damage, bulletDirection * shotForce, p.ID, heldItemScript.nickname);
             }
 
             // TODO try a sendmessage(takedamage) instead

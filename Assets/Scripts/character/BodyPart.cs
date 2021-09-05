@@ -62,7 +62,7 @@ public class BodyPart : MonoBehaviour, IDamageTaker
     }
 
     // Should only be called from the local Player
-    public void AddDamage(int dmg, int sourcePlayerID)
+    public void AddDamage(int dmg, int sourcePlayerID, string sourceWeapon)
     {
         // Local only
         if (!p.photonView.IsMine)
@@ -70,7 +70,7 @@ public class BodyPart : MonoBehaviour, IDamageTaker
             lm.LogError(logSrc, $"AddDamage called on {this.name} from non-owner");
             return;
         }
-        // TODO if we already have a Damage from this player, increase it
+        // TODO if we already have a Damage from this player and source, increase it
 
         _damages.Add(new Damage(sourcePlayerID, dmg));
 
@@ -140,10 +140,10 @@ public class BodyPart : MonoBehaviour, IDamageTaker
 
     // This is an object that can receive damage.
     // Note: This method is always local to the damage dealer, we need to forward damage onto the player script via rpc.
-    public void TakeDamage(int dmg, Vector3 hitDirection, int sourcePlayerID)
+    public void TakeDamage(int dmg, Vector3 hitDirection, int sourcePlayerID, string sourceWeapon)
     {
         // Also sends bone (object) name, so the Player knows which part of the body took damage
-        if (p) p.photonView.RPC("DamageBone", Photon.Pun.RpcTarget.All, this.name, dmg, hitDirection, sourcePlayerID);
+        if (p) p.photonView.RPC("DamageBone", Photon.Pun.RpcTarget.All, this.name, dmg, hitDirection, sourcePlayerID, sourceWeapon);
     }
 
 }

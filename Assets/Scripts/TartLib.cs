@@ -5,7 +5,7 @@ namespace TART
 {
     interface IDamageTaker
     {
-        public void TakeDamage(int dmg, Vector3 hitDirection, int sourcePlayerID);
+        public void TakeDamage(int dmg, Vector3 hitDirection, int sourcePlayerID, string sourceWeapon);
     }
 
     // Events for STUFF happening. This should contain loads of things, so we can easily make weird weapons and items.
