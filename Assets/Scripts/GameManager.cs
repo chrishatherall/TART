@@ -36,8 +36,10 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     public GameObject playerPrefab;
 
     // Ref to the special weapon UI elements for Deathmatch
-    public GameObject grenadeNotification;
-    public GameObject c4Notification;
+    public UnityEngine.UI.Image curGrenadePointsImage;
+    public UnityEngine.UI.Image maxGrenadePointsImage;
+    public UnityEngine.UI.Image curC4PointsImage;
+    public UnityEngine.UI.Image maxC4PointsImage;
 
     // Round-change noises.
     [SerializeField]
