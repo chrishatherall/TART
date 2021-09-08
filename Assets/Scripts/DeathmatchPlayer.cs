@@ -115,6 +115,8 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
             Vector2 newSize = new Vector2(gm.maxC4PointsImage.rectTransform.rect.width * ((float)c4Points / (float)c4MaxPoints), gm.maxC4PointsImage.rectTransform.rect.height);
             gm.curC4PointsImage.rectTransform.sizeDelta = newSize;
         }
+
+        if (gm.killCountText) gm.killCountText.text = $"{kills} K";
     }
 
     private void OnEnable()

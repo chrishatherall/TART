@@ -40,6 +40,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     public UnityEngine.UI.Image maxGrenadePointsImage;
     public UnityEngine.UI.Image curC4PointsImage;
     public UnityEngine.UI.Image maxC4PointsImage;
+    public UnityEngine.UI.Text killCountText;
 
     // Round-change noises.
     [SerializeField]
