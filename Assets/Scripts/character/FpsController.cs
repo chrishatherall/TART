@@ -83,6 +83,9 @@ public class FpsController : MonoBehaviourPun
     // The audio source we use to emit sounds from this character
     private AudioSource audioSource;
 
+    [SerializeField]
+    AudioClip cannotPlaceClip;
+
     // The text box shown below our cursor, for displaying information on pickups, activatables, etc
     public UnityEngine.UI.Text cursorTooltip;
 
@@ -452,12 +455,28 @@ public class FpsController : MonoBehaviourPun
     }
 
     // Drops an item into the world
-    public void TryDropItem (string prefabName)
+    public bool TryDropItem (string prefabName)
     {
+        // TODO check for reasons we couldnt drop an item
         // Tell server we're dropping an item.
         photonView.RPC("RpcDropItem", RpcTarget.MasterClient, prefabName);
         // Do throw visuals on all clients
         photonView.RPC("DoThrowVisuals", RpcTarget.All);
+        return true;
+    }
+
+    // Returns true if item was placed
+    public bool TryPlaceItem (string prefabName, float distance)
+    {
+        if (CanPlaceItem(prefabName, distance))
+        {
+            // NOTE: we don't play a placement sound, this should be on the placed item
+            PlaceItem(prefabName);
+            return true;
+        }
+        // Play place-failure sound
+        if (audioSource && cannotPlaceClip) audioSource.PlayOneShot(cannotPlaceClip);
+        return false;
     }
 
     // Checks to see if we can place an item at our current looking point, considering a maximum distance.

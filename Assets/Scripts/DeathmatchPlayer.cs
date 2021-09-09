@@ -143,22 +143,14 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
         {
             // Throw grenade
             FpsController fpsc = GetComponent<FpsController>();
-            if (fpsc)
-            {
-                fpsc.TryDropItem("Grenade");
-                HasGrenade = false;
-            }
+            if (fpsc && fpsc.TryDropItem("Grenade")) HasGrenade = false;
         }
 
         if (HasC4 && Input.GetKeyDown("c"))
         {
             // Place c4
             FpsController fpsc = GetComponent<FpsController>();
-            if (fpsc && fpsc.CanPlaceItem("C4", 2f))
-            {
-                fpsc.PlaceItem("C4");
-                HasC4 = false;
-            }
+            if (fpsc && fpsc.TryPlaceItem("C4", 2f)) HasC4 = false;
         }
     }
 
