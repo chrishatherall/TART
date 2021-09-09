@@ -17,6 +17,7 @@ namespace TART
         Postround,    // A round ended, postround began
         InnocentWin,
         TraitorWin,
+        DeathmatchWin,
         PlayerDied    // A player died during a round
     }
 

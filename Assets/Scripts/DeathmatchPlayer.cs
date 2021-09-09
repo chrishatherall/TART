@@ -66,6 +66,9 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
         {
             this.enabled = false;
         }
+
+        p.DMPlayer = this;
+
         RecalculateProgressBars();
 
     }
@@ -101,10 +104,13 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
                 RecalculateProgressBars();
             }
         }
+
     }
 
     void RecalculateProgressBars()
     {
+        if (!p.photonView.IsMine) return;
+
         if (gm.curGrenadePointsImage && gm.maxGrenadePointsImage)
         {
             Vector2 newSize = new Vector2(gm.maxGrenadePointsImage.rectTransform.rect.width * ((float)grenadePoints / (float)grenadeMaxPoints), gm.maxGrenadePointsImage.rectTransform.rect.height);
@@ -154,5 +160,13 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
                 HasC4 = false;
             }
         }
+    }
+
+    public void Reset(bool forceRespawn)
+    {
+        kills = 0;
+        c4Points = 0;
+        grenadePoints = 0;
+        RecalculateProgressBars();
     }
 }

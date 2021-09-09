@@ -42,6 +42,8 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     public UnityEngine.UI.Image maxC4PointsImage;
     public UnityEngine.UI.Text killCountText;
 
+    public int DeathmatchRequiredKills = 25;
+
     // Round-change noises.
     [SerializeField]
     AudioSource roundChange;
@@ -72,7 +74,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     float DC_preRoundTime = 15;
     float DC_postRoundTime = 15;
     float DM_preRoundTime = 1;
-    float DM_postRoundTime = 1;
+    float DM_postRoundTime = 5;
     public float curPreRoundTime;
     public float curPostRoundTime;
 
@@ -316,7 +318,21 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
                     // Round active
                     case GameState.Active:
                         // Check for an end-game state.
-                        // First to X kills
+                        // First to X kills, find a player with required number of kills
+                        foreach (Player p in players)
+                        {
+                            if (p.DMPlayer && p.DMPlayer.kills >= DeathmatchRequiredKills)
+                            {
+                                // Send out event for the win
+                                object[] eventData = new object[] { p.ID };
+                                RaiseEvent(Events.DeathmatchWin, eventData);
+                                Alert($"Winner: {p.nickname}");
+                                ResetPlayers();
+
+                                CurrentGameState = GameState.PostRound;
+                            }
+                        }
+
                         break;
 
                     // Post-round
