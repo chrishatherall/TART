@@ -43,7 +43,7 @@ public class BodyPart : MonoBehaviour, IDamageTaker
         if (ps.gameObject.activeSelf)
         {
             // Find reasons to disable ps
-            if (_currentDamage == 0 || p.oil == 0) ps.gameObject.SetActive(false);
+            if (_currentDamage == 0 || p.oil <= 0) ps.gameObject.SetActive(false);
         } else
         {
             // Find reasons to enable ps
