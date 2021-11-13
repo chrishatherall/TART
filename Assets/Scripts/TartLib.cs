@@ -5,6 +5,7 @@ namespace TART
 {
     interface IDamageTaker
     {
+        // HitDirection also includes force
         public void TakeDamage(int dmg, Vector3 hitDirection, int sourcePlayerID, string sourceWeapon);
     }
 

@@ -12,6 +12,13 @@ public class BodyPart : MonoBehaviour, IDamageTaker
     // Ref to our parent Player script
     public Player p;
 
+    // Cumulative force
+    public Vector3 cumulativeForce = new Vector3();
+    // Time in which we'll clear our force
+    float timeToForceClear = 0f;
+    // Default time between clearing force
+    float timeBetweenForceClear = 0.1f;
+
     // The list of Damages on this body part
     List<Damage> _damages;
     public List<Damage> Damages { get => _damages; }
@@ -48,6 +55,13 @@ public class BodyPart : MonoBehaviour, IDamageTaker
         {
             // Find reasons to enable ps
             if (_currentDamage > 0 && p.oil > 0) ps.gameObject.SetActive(true);
+        }
+
+        // Clear force
+        if (timeToForceClear > 0f)
+        {
+            timeToForceClear -= Time.deltaTime;
+            if (timeToForceClear < 0f) cumulativeForce = new Vector3();
         }
     }
 
@@ -144,6 +158,14 @@ public class BodyPart : MonoBehaviour, IDamageTaker
     {
         // Also sends bone (object) name, so the Player knows which part of the body took damage
         if (p) p.photonView.RPC("DamageBone", Photon.Pun.RpcTarget.All, this.name, dmg, hitDirection, sourcePlayerID, sourceWeapon);
+    }
+
+    public void AddForce(Vector3 hitDirection)
+    {
+        // Add this force to our current force
+        cumulativeForce += hitDirection;
+        // Set timer to clear force
+        timeToForceClear = timeBetweenForceClear;
     }
 
 }

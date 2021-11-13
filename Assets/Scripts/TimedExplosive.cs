@@ -80,24 +80,19 @@ public class TimedExplosive : MonoBehaviourPun, IPunInstantiateMagicCallback
                 if (bp)
                 {
                     if (!hitPlayers.ContainsKey(bp.p.ID)) hitPlayers.Add(bp.p.ID, "");
-                    hitPlayers[bp.p.ID] += "/" + bp.name;
+                    //hitPlayers[bp.p.ID] += "/" + bp.name;
+
+                    // Scale damage and force by distance
+                    float distance = Vector3.Distance(bp.transform.position, this.transform.position);
+                    // In some cases, our distance can be more than the explosion radius if our colliders clip the edge of the explosion. In this case, ignore the damage 
+                    // because it'll otherwise become negative and do healing.
+                    if (distance > explosionRadius) break;
+                    int damage = Mathf.RoundToInt(explosionDamage * (1 - distance / explosionRadius));
+                    float force = explosionForce * (1 - distance / explosionRadius);
+                    bp.TakeDamage(damage, Vector3.Normalize(bp.transform.position + new Vector3(0f, 1f, 0f) - this.transform.position) * force, bp.p.ID, nickname);
                 }
             }
-
             lm.Log(logSrc, $"Explosion at {this.transform.position} with {explosionRadius} radius hit {hitColliders.Length} colliders and {hitPlayers.Count} players.");
-        
-            foreach (DictionaryEntry de in hitPlayers)
-            {
-                Player p = gm.GetPlayerByID(int.Parse(de.Key.ToString()));
-                // Scale damage and force by distance
-                float distance = Vector3.Distance(p.transform.position, this.transform.position);
-                // In some cases, our distance can be more than the explosion radius if our colliders clip the edge of the explosion. In this case, ignore the damage 
-                // because it'll otherwise become negative and do healing.
-                if (distance > explosionRadius) break;
-                int damage = Mathf.RoundToInt(explosionDamage * (1 - distance / explosionRadius));
-                float force = explosionForce * (1 - distance / explosionRadius);
-                if (p) p.photonView.RPC("DamageBone", Photon.Pun.RpcTarget.All, de.Value.ToString(), damage, Vector3.Normalize(p.transform.position + new Vector3(0f, 1f, 0f) - this.transform.position) * force, ownerPlayerID, nickname); // Note: use roughly the chest of the player so they are thrown upwards
-            }
         }
 
         // Destroy the physical object that exploded

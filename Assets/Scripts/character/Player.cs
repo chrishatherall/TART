@@ -299,9 +299,9 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
     // Called from a remote/local BodyPart script when it is damaged.
     [PunRPC]
-    public void DamageBone(string bodyPartNamesString, int dmg, Vector3 hitDirection, int sourcePlayerID, string sourceWeapon)
+    public void DamageBone(string bodyPartName, int dmg, Vector3 hitDirection, int sourcePlayerID, string sourceWeapon)
     {
-        lm.Log(logSrc, $"Taking damage of {dmg} to bodyparts {bodyPartNamesString}");
+        lm.Log(logSrc, $"Taking damage of {dmg} to bodypart {bodyPartName}");
         // Don't deal with damage if we don't own this player
         //if (!photonView.IsMine) return; // TODO TEMPORARILY do this on all clients for the visuals, need proper BodyPart syncing to avoid doing this one all clients
 
@@ -311,25 +311,19 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         // Play damage sound if we own this player
         if (photonView.IsMine) audioSrc.PlayOneShot(damageSound);
 
-        // Split bodypart string into list of BodyParts
-        string[] bodyPartStrings = bodyPartNamesString.Split('/');
-        List<BodyPart> bodyParts = new List<BodyPart>();
-        foreach (string bps in bodyPartStrings)
+        BodyPart bp = GetBodyPartByName(bodyPartName);
+        if (bp)
         {
-            BodyPart bp = GetBodyPartByName(bps);
-            if (bp)
-            {
-                bodyParts.Add(bp);
-                // Apply damage to the BodyPart
-                //bp.Damage += dmg; // here we would call a method and pass damage+playerid. This would allow special bodyparts to adjust damage.
-                bp.AddDamage(dmg, sourcePlayerID, sourceWeapon);
-            }
+            // Apply damage to the BodyPart
+            bp.AddDamage(dmg, sourcePlayerID, sourceWeapon);
+            // Apply force to the BodyPart
+            bp.AddForce(hitDirection);
         }
 
-        // To make damage more responsive, kill player instantly if damage > oil, and hit the ragdoll with hitDirection force
+        // To make damage more responsive, kill player instantly if damage > oil
         if (GetDamage() > oil)
         {
-            Kill(hitDirection, bodyParts, sourcePlayerID, sourceWeapon);
+            Kill(hitDirection, sourcePlayerID, sourceWeapon);
         }
     }
 
@@ -521,7 +515,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
 
     // Instantly kills this player. This is called on all clients when something instantly kills someone, to replicate the ragdoll nicely.
     // TODO This seems messy
-    public void Kill(Vector3 hitDirection, List<BodyPart> ragdollBodyParts, int playerID, string sourceWeapon)
+    public void Kill(Vector3 hitDirection, int playerID, string sourceWeapon)
     {
         diedToInstantDeath = true;
         instantDeathPlayer = playerID;
@@ -533,12 +527,12 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         //}
         IsDead = true;
         // Ragdoll should be enabled now that we're dead, so apply hit force
-        foreach (BodyPart bp in ragdollBodyParts)
+        foreach (BodyPart bp in bodyParts)
         {
             Rigidbody rb = bp.GetComponent<Rigidbody>();
             if (rb)
             {
-                rb.AddForce(hitDirection, ForceMode.Impulse);
+                rb.AddForce(bp.cumulativeForce, ForceMode.Impulse);
             }
         }
     }

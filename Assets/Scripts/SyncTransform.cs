@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+// NO LONGER USED
+
 // Used on objects which require smart interpolation, such as thrown items
 
 [RequireComponent(typeof (PhotonTransformViewClassic))]
