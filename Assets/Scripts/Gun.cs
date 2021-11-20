@@ -52,7 +52,7 @@ public class Gun : MonoBehaviourPun
     // Shot damage
     public int damage = 1;
     // Shot force (physics)
-    public float shotForce = 200f;
+    public float shotForce = 20f;
     // TODO Rays per shot (1 for most guns, more for shotguns) (need accuracy)
     // Shot range
     public float range = 100f;
@@ -134,6 +134,14 @@ public class Gun : MonoBehaviourPun
             GameObject decalObject = Instantiate(decalPrefab, hit.point + (hit.normal * 0.025f), Quaternion.FromToRotation(decalPrefab.transform.up, hit.normal)) as GameObject;
             // Parent the decal object to the hit gameobject so it can move around
             decalObject.transform.parent = hit.transform;
+
+            // TODO probably not the best place for this but it works ish
+            // Check if the object we hit has a rigidbody attached
+            if (hit.rigidbody != null)
+            {
+                // Add force to the rigidbody we hit, in the direction from which it was hit
+                hit.rigidbody.AddForce(-hit.normal * shotForce, ForceMode.Impulse);
+            }
         }
     }
 
@@ -176,13 +184,7 @@ public class Gun : MonoBehaviourPun
 
             // TODO try a sendmessage(takedamage) instead
 
-            // Check if the object we hit has a rigidbody attached
-            //if (hit.rigidbody != null)
-            //{
-            //    // TODO not networked
-            //    // Add force to the rigidbody we hit, in the direction from which it was hit
-            //    hit.rigidbody.AddForce(-hit.normal * shotForce);
-            //}
+
         }
 
         // Add recoil to gun
