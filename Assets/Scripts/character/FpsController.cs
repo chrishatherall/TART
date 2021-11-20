@@ -227,6 +227,9 @@ public class FpsController : MonoBehaviourPun
         Vector3 strafe = p.leftRightMovement * transform.right;
         Vector3 forward = p.frontBackMovement * transform.forward;
         Vector3 moveDirection = forward + strafe;
+        // Stop us going faster diagonally. If we're moving on multiple axis, scale back down
+        if (moveDirection.magnitude > 1f) moveDirection = moveDirection.normalized;
+        // Adjust direction by speed
         moveDirection *= speed;
 
         if (charCon.isGrounded)
