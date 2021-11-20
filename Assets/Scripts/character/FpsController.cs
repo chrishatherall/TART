@@ -89,7 +89,7 @@ public class FpsController : MonoBehaviourPun
     // The text box shown below our cursor, for displaying information on pickups, activatables, etc
     public UnityEngine.UI.Text cursorTooltip;
 
-    public float CameraWiggle { 
+    public float CameraWiggle {
         get => _camWiggle; 
         set 
         {
@@ -249,7 +249,8 @@ public class FpsController : MonoBehaviourPun
         if (p.IsCrouching || Input.GetKey(KeyCode.LeftShift))
         {
             p.isRunning = false;
-            moveDirection *= 0.5f;
+            // Cheap fix for air-crouchnig slowing you down, only actually reduce speed if grounded
+            if (p.IsGrounded) moveDirection *= 0.5f;
         } else
         {
             // If not crouch/shiftwalking but still moving, we're running
