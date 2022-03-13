@@ -290,10 +290,6 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     [PunRPC]
     public void DamageBone(string bodyPartName, int dmg, Vector3 hitDirection, int sourcePlayerID, string sourceWeapon)
     {
-        lm.Log(logSrc, $"Taking damage of {dmg} to bodypart {bodyPartName}");
-        // Don't deal with damage if we don't own this player
-        //if (!photonView.IsMine) return; // TODO TEMPORARILY do this on all clients for the visuals, need proper BodyPart syncing to avoid doing this one all clients
-
         // Can't take more damage if we're dead
         if (IsDead) return;
 
