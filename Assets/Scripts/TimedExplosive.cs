@@ -89,7 +89,7 @@ public class TimedExplosive : MonoBehaviourPun, IPunInstantiateMagicCallback
                     if (distance > explosionRadius) break;
                     int damage = Mathf.RoundToInt(explosionDamage * (1 - distance / explosionRadius));
                     float force = explosionForce * (1 - distance / explosionRadius);
-                    bp.TakeDamage(damage, Vector3.Normalize(bp.transform.position + new Vector3(0f, 1f, 0f) - this.transform.position) * force, bp.p.ID, nickname);
+                    bp.TakeDamage(damage, Vector3.Normalize(bp.transform.position + new Vector3(0f, 1f, 0f) - this.transform.position) * force, ownerPlayerID, nickname);
                 }
             }
             lm.Log(logSrc, $"Explosion at {this.transform.position} with {explosionRadius} radius hit {hitColliders.Length} colliders and {hitPlayers.Count} players.");
