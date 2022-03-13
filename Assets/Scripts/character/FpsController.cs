@@ -377,6 +377,7 @@ public class FpsController : MonoBehaviourPun
         {
             if (fj.connectedBody)
             {
+                fj.connectedBody.WakeUp();
                 fj.connectedBody = null;
             } else if (hitSomething)
             {
