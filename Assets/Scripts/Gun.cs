@@ -5,9 +5,6 @@ using Photon.Pun;
 using static GameManager;
 using static LogManager;
 
-// TODO ideally modify PS to have a max distance so it runs out at our hit point. Not sure it's worth, 
-//   but avoid using collision, and fixes bug where particle hits a corner a bullet doesn't.
-
 public class Gun : MonoBehaviourPun
 {
     readonly string logSrc = "GUN";
@@ -26,6 +23,8 @@ public class Gun : MonoBehaviourPun
     // Mag size
     public int magazineSize = 10;
 
+    float bulletSpeed = 30; // ms/s, used for trail renderer NOT hit detection
+
     // Reload time
     public float reloadTime = 2f;
     // is currently reloading
@@ -37,6 +36,7 @@ public class Gun : MonoBehaviourPun
     public bool triggerDown = false;
     // Origin point set by HeldItem
     public Vector3 aimOrigin;
+    public GameObject barrelEnd;
     // Axis around which recoil turns the gun
     public Vector3 recoilAxis;
     // Decal prefab
@@ -68,9 +68,9 @@ public class Gun : MonoBehaviourPun
     // Ref to the model anchor transform
     [SerializeField]
     GameObject modelAnchor;
-    // Ref to the particle emitter
+    // Ref to our default trail renderer
     [SerializeField]
-    ParticleSystem ps;
+    TrailRenderer DefTrail;
     // Ref to our player owner
     Player p;
     // Ref to our own helditem script
@@ -97,7 +97,7 @@ public class Gun : MonoBehaviourPun
         p.heldItem = this.gameObject;
         p.heldItemScript = heldItemScript;
 
-        // If we're setting up for ourselves, set audio emitter to 2d so the gun firing noise 
+        // If we're setting up for ourselves, set audio emitter to 2d so the gun firing noise
         // doesn't annoyingly favour one ear.
         if (photonView.IsMine)
         {
@@ -114,35 +114,53 @@ public class Gun : MonoBehaviourPun
         // Play shoot sound
         shotSound.PlayOneShot(shotSound.clip);
 
-        // Play one emission of our particle emitter
-        if (ps)
-        {
-            ps.gameObject.transform.rotation.SetLookRotation(direction); // This works but I don't know how
-            ps.Play();
-        }
-
         // Temp thing to try and not hit ourselves
         int layermask = 1;
         if (photonView.IsMine) layermask = ~(1 << 7);
 
+        RaycastHit hit;
+        Vector3 trailEndPoint;
+        bool hitSomething = Physics.Raycast(origin, direction, out hit, range, layermask);
         // Check if our raycast has hit anything
-        if (Physics.Raycast(origin, direction, out RaycastHit hit, range, layermask)) // TODO for other people this will likely hit our player all the time
+        if (hitSomething) // TODO for other people this will likely hit our player all the time
         {
-            ps.gameObject.transform.LookAt(hit.point);
-            // TODO pool objects
-            //Spawn the decal object just above the surface the raycast hit
-            GameObject decalObject = Instantiate(decalPrefab, hit.point + (hit.normal * 0.025f), Quaternion.FromToRotation(decalPrefab.transform.up, hit.normal)) as GameObject;
-            // Parent the decal object to the hit gameobject so it can move around
-            decalObject.transform.parent = hit.transform;
+          trailEndPoint = hit.point;
+          // TODO pool objects
+          //Spawn the decal object just above the surface the raycast hit
+          GameObject decalObject = Instantiate(decalPrefab, hit.point + (hit.normal * 0.025f), Quaternion.FromToRotation(decalPrefab.transform.up, hit.normal)) as GameObject;
+          // Parent the decal object to the hit gameobject so it can move around
+          decalObject.transform.parent = hit.transform;
 
-            // TODO probably not the best place for this but it works ish
-            // Check if the object we hit has a rigidbody attached
-            if (hit.rigidbody != null)
-            {
-                // Add force to the rigidbody we hit, in the direction from which it was hit
-                hit.rigidbody.AddForce(-hit.normal * shotForce, ForceMode.Impulse);
-            }
+          // TODO probably not the best place for this but it works ish
+          // Check if the object we hit has a rigidbody attached
+          if (hit.rigidbody != null)
+          {
+            // Add force to the rigidbody we hit, in the direction from which it was hit
+            hit.rigidbody.AddForce(-hit.normal * shotForce, ForceMode.Impulse);
+          }
+        } else {
+          // Didn't hit anything, so set the end point of the trail renderer somewhere forward.
+          // TODO
+          trailEndPoint = Vector3.zero;
         }
+
+        // Spawn a new bullet tracer and start routine to move it
+        TrailRenderer trail = Instantiate(DefTrail, barrelEnd.transform.position, Quaternion.identity);
+        StartCoroutine(MoveTrail(trail, trailEndPoint));
+    }
+
+    IEnumerator MoveTrail(TrailRenderer trail, Vector3 endLocation) {
+        float time = 0;
+        Vector3 startLocation = trail.transform.position;
+        float travelTime = Vector3.Distance(startLocation, endLocation) / bulletSpeed;
+
+        while (time < travelTime) {
+            trail.transform.position = Vector3.Lerp(startLocation, endLocation, time);
+            time += Time.deltaTime / trail.time;
+            yield return null;
+        }
+        trail.transform.position = endLocation;
+        Destroy(trail.gameObject, trail.time);
     }
 
     // Attempt to shoot, called when left-clicking
@@ -178,7 +196,7 @@ public class Gun : MonoBehaviourPun
             BodyPart bp = hit.transform.GetComponent<BodyPart>();
             if (bp)
             {
-                // If we hit a bodypart, send an rpc to the parent player object 
+                // If we hit a bodypart, send an rpc to the parent player object
                 bp.TakeDamage(damage, bulletDirection * shotForce, p.ID, heldItemScript.nickname);
             }
 
