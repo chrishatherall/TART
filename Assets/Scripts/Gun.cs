@@ -193,7 +193,7 @@ public class Gun : MonoBehaviourPun
         // Add recoil to camera/character
         if (fpsController)
         {
-            fpsController.CameraWiggle = recoilPerShot;
+            fpsController.CameraWiggle = recoilPerShot /2;
         } else
         {
             lm.LogError(logSrc,"Cannot find FpsController to add camera wiggle");
