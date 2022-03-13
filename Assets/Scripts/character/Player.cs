@@ -258,8 +258,6 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     [PunRPC]
     public void Reset(bool forceRespawn)
     {
-        // Call on optional attached scripts also
-        if (DMPlayer) DMPlayer.Reset(forceRespawn);
         // Set new position if dead or being forced to respwn
         if (IsDead || forceRespawn)
         {
