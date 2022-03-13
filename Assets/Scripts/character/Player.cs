@@ -91,10 +91,6 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
     [SerializeField]
     AudioClip throwSound;
 
-    // Ref to the skinned mesh renderer. Disabled locally if alive, otherwise enabled
-    [SerializeField]
-    SkinnedMeshRenderer bodySkinnedMesh;
-
     // Public access for the role
     public TartRole Role { get => _role; }
 
@@ -108,8 +104,6 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             {
                 _isDead = value;
                 if (_isDead) Die();
-                // Disable the skinned mesh if we're the owner and alive, otherwise enable it
-                if (!isBot && bodySkinnedMesh) bodySkinnedMesh.enabled = !(photonView.IsMine && !_isDead);
             }
         }
     }
@@ -195,9 +189,6 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             }
             else
             {
-                // Turn off our skinned mesh renderer
-                if (bodySkinnedMesh) bodySkinnedMesh.enabled = false;
-
                 nickname = PhotonNetwork.LocalPlayer.NickName;
                 SetLayer(7); // Set to localplayer layer
             }

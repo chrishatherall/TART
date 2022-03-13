@@ -128,8 +128,13 @@ public class FpsController : MonoBehaviourPun
             lm.LogError(logSrc,"Missing components!");
         }
 
-        // Turn on character controller
-        if (photonView.IsMine) charCon.enabled = true;
+        if (photonView.IsMine)
+        {
+            // Scale the head to 0 so it doesn't clip with the camera
+            this.GetComponent<PlayerAnimController>().SetHead(false);
+            // Turn on character controller
+            charCon.enabled = true;
+        }
 
         // Turn off the cursor
         Cursor.lockState = CursorLockMode.Locked;

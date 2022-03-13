@@ -97,4 +97,11 @@ public class PlayerAnimController : MonoBehaviour
         }
     }
 
+    public void SetHead(bool headOn)
+    {
+        // Sets the head on or off
+        bHead.transform.localScale = headOn ?
+            new Vector3(1f, 1f, 1f) :
+            new Vector3(0f, 0f, 0f);
+    }
 }
