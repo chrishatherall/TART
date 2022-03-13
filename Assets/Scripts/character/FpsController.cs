@@ -535,8 +535,8 @@ public class FpsController : MonoBehaviourPun
         if (act.requiredKey != "" && !inventory.HasItem(act.requiredKey))
         {
             // ui alert
-            gm.Alert("NEED " + act.requiredKey);
-            lm.Log(logSrc,"NEED " + act.requiredKey);
+            gm.Alert("Need " + act.requiredKey);
+            lm.Log(logSrc, "Need " + act.requiredKey);
             return;
         }
         act.Activate(position);
