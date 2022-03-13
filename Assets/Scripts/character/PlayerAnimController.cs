@@ -16,6 +16,26 @@ public class PlayerAnimController : MonoBehaviour
     [SerializeField]
     GameObject rightHandIKObj;
 
+    [SerializeField]
+    GameObject bHead;
+    [SerializeField]
+    GameObject bUpperChest;
+    [SerializeField]
+    GameObject bChest;
+    [SerializeField]
+    GameObject bSpine;
+    [SerializeField]
+    GameObject bHips;
+    [SerializeField]
+    GameObject root;
+
+    Quaternion defbUpperChest;
+    Quaternion defbChest;
+    Quaternion defbSpine;
+    //Quaternion defbHips;
+    [SerializeField]
+    Vector3 defbHips = new Vector3(0f, 0f, -90f);
+
     // The parent of the item anchor which rotates to look at our hit point. Makes guns aim
     // roughly at the place we're looking
     [SerializeField]
@@ -27,6 +47,10 @@ public class PlayerAnimController : MonoBehaviour
 
     public void Start()
     {
+        if (bUpperChest) defbUpperChest = bUpperChest.transform.localRotation;
+        if (bChest) defbChest = bChest.transform.localRotation;
+        if (bSpine) defbSpine = bSpine.transform.localRotation;
+
         animator = GetComponent<Animator>();
         p = GetComponent<Player>();
 
@@ -95,6 +119,18 @@ public class PlayerAnimController : MonoBehaviour
             animator.SetIKPositionWeight(AvatarIKGoal.RightHand, 0);
             animator.SetIKRotationWeight(AvatarIKGoal.RightHand, 0);
         }
+
+        // Override a load of upper body values so when running we don't lean forward loads, which looks awful in first-person
+        if (bUpperChest) animator.SetBoneLocalRotation(HumanBodyBones.UpperChest, defbUpperChest);
+        if (bChest) animator.SetBoneLocalRotation(HumanBodyBones.Chest, defbChest);
+        if (bSpine) animator.SetBoneLocalRotation(HumanBodyBones.Spine, defbSpine);
+        animator.SetBoneLocalRotation(HumanBodyBones.Hips, Quaternion.Euler(defbHips));
+    }
+
+    void LateUpdate()
+    {
+        // we don't apply root motion, so we need to bump the model up
+        root.transform.localPosition = new Vector3(0f, p.IsCrouching ? 0.45f : 0.66f, 0f);
     }
 
     public void SetHead(bool headOn)
