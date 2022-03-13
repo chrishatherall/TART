@@ -5,9 +5,9 @@ using Photon.Pun;
 using static GameManager;
 using static LogManager;
 
-// An activatable is something that can be E'd, by a player and is highlighted when they look at it.
+// An activatable is something that can be activated (by pressing E) by a player and is highlighted when they look at it.
 // Examples: Buttons, levers, doors
-// When E'd, it broadcasts "OnActivated" on the target gameobject to be controlled. (This object if null)
+// When activated, it broadcasts "OnActivated" on the target GameObject to be controlled.
 [RequireComponent(typeof(PhotonView))]
 public class Activatable : MonoBehaviourPun
 {
@@ -19,27 +19,28 @@ public class Activatable : MonoBehaviourPun
     // Friendly name used in UI components
     public string nickname;
 
-    // Temporary way of locking doors, will be removed in the future
+    // Activatables can be set to require a key in the player's inventory by populating this string.
     public string requiredKey;
 
     public void Start()
     {
-        // Our controllable should be ourselves if nothing is defined.
+        // Our controllable should be set to ourselves if nothing else is defined.
         if (!targetControllable) targetControllable = this.gameObject;
     }
 
+    // Called by Activate on a client
     [PunRPC]
     public void Activated(Vector3 position, PhotonMessageInfo info)
     {
         // Tell other scripts on this object to activate
         lm.Log(logSrc,"Activated " + nickname);
-        targetControllable.SendMessage("OnActivated", position);
+        targetControllable.SendMessage("OnActivated", position, SendMessageOptions.DontRequireReceiver);
     }
 
     // Called locally when a player activates this object
     public void Activate(Vector3 position)
     {
-        // TODO check things like enabled/disabled, X role only, cooldown, bool on/off like levers, etc
+        // TODO check activation requirements like enabled/disabled, X role only, cooldown, bool on/off like levers, etc
 
         this.photonView.RPC("Activated", RpcTarget.All, position);
     }
