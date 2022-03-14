@@ -377,14 +377,28 @@ public class FpsController : MonoBehaviourPun
         {
             if (fj.connectedBody)
             {
+                // Try to transfer ownership back to scene
+                PhotonView pv = fj.connectedBody.GetComponent<PhotonView>();
+                if (pv && pv.OwnershipTransfer == OwnershipOption.Takeover)
+                {
+                    pv.TransferOwnership(0);
+                }
+
                 fj.connectedBody.AddForce(new Vector3(0f, 0.0001f));
                 fj.connectedBody = null;
+
             } else if (hitSomething)
             {
                 // Try to drag
                 Rigidbody rb = lastHit.transform.GetComponent<Rigidbody>();
-                if (rb)
-                {
+                PhotonView pv = lastHit.transform.GetComponent<PhotonView>();
+                if (rb) { 
+                    // Try to get ownership of this object so we can send physics updates
+                    if (pv && pv.OwnershipTransfer == OwnershipOption.Takeover)
+                    {
+                        pv.TransferOwnership(this.photonView.Owner);
+                    }
+
                     rbDragger.transform.position = lastHit.transform.position;
                     fj.connectedBody = rb;
                 }
