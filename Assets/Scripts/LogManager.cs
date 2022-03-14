@@ -44,7 +44,7 @@ public class LogManager : MonoBehaviour
     { AddLog(source, msg, false); }
 
     public void LogError(string source, string msg)
-    { AddLog(source, msg, true); }
+    { AddLog(source, msg, true); Debug.LogError($"[{source}] {msg}"); }
 
     public void HandleUnityLog(string logString, string stack, LogType type)
     {

@@ -467,7 +467,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
             BodyPart bp = GetBodyPartByName(split[0]);
             if (!bp)
             {
-                lm.LogError(logSrc, $"Error deserialising BodyPart damage, invalid part name. Data: '{data}'");
+                lm.LogError(logSrc, $"Error deserialising BodyPart damage, invalid part name. Name: '{split[0]}'");
                 return;
             }
             bp.Deserialise(part);
