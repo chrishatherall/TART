@@ -132,6 +132,14 @@ public class BodyPart : MonoBehaviour, IDamageTaker
         {
             serial += $":{D.SourcePlayerID}:{D.Amount}";
         }
+
+        if (p.IsDead)
+        {
+            // Add position
+            serial += $";{transform.position.x}:{transform.position.y}:{transform.position.z}";
+            // Add rotation
+            serial += $":{transform.rotation.x}:{transform.rotation.y}:{transform.rotation.z}:{transform.rotation.w}";
+        }
         return serial;
     }
 
@@ -142,13 +150,43 @@ public class BodyPart : MonoBehaviour, IDamageTaker
 
         _damages.Clear();
 
+        // Split serial into damage string and position string
+        string[] split = serial.Split(';');
+
+        // Damage string
+        string[] damageStr = split[0].Split(':');
         // bp-head:1001:4:1002:8
-        string[] split = serial.Split(':');
-        for (int i = 1; i < split.Length; i+=2)
+        for (int i = 1; i < damageStr.Length; i+=2)
         {
-            _damages.Add(new Damage(split[i], split[i + 1]));
+            _damages.Add(new Damage(damageStr[i], damageStr[i + 1]));
         }
         CalculateCurrentDamage();
+
+        // Position string
+        if (split.Length > 1)
+        {
+            Rigidbody rb = GetComponent<Rigidbody>();
+            bool wasKinematic = rb.isKinematic;
+            bool wasGravity = rb.useGravity;
+            rb.isKinematic = true;
+            rb.useGravity = false;
+
+            string[] positionStr = split[1].Split(':');
+            transform.position = new Vector3(
+                float.Parse(positionStr[0]),
+                float.Parse(positionStr[1]),
+                float.Parse(positionStr[2])
+                );
+            transform.rotation = new Quaternion(
+                float.Parse(positionStr[3]),
+                float.Parse(positionStr[4]),
+                float.Parse(positionStr[5]),
+                float.Parse(positionStr[6])
+                );
+
+            rb.isKinematic = wasKinematic;
+            rb.useGravity = wasGravity;
+        }
     }
 
 
