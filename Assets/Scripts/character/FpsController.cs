@@ -392,13 +392,10 @@ public class FpsController : MonoBehaviourPun
                 // Try to drag
                 Rigidbody rb = lastHit.transform.GetComponent<Rigidbody>();
                 PhotonView pv = lastHit.transform.GetComponent<PhotonView>();
-                if (rb) { 
-                    // Try to get ownership of this object so we can send physics updates
-                    if (pv && pv.OwnershipTransfer == OwnershipOption.Takeover)
-                    {
-                        pv.TransferOwnership(this.photonView.Owner);
-                    }
-
+                if (rb && pv && pv.OwnershipTransfer == OwnershipOption.Takeover) { 
+                    // Take ownership of this object so we can send physics updates
+                    pv.TransferOwnership(this.photonView.Owner);
+                    // Set our dragger at the hit position
                     rbDragger.transform.position = lastHit.transform.position;
                     fj.connectedBody = rb;
                 }
