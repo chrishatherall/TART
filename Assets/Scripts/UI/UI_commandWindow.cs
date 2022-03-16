@@ -89,8 +89,8 @@ public class UI_commandWindow : MonoBehaviourPun
         }
 
         // Get player who sent the command
-        Character p = gm.GetPlayerByActorNumber(pmi.Sender.ActorNumber);
-        if (!p)
+        Player player = gm.GetPlayerById(pmi.Sender.ActorNumber);
+        if (!player)
         {
             lm.LogError(logSrc, $"Couldnt find player {pmi.Sender.ActorNumber}.");
             return;
@@ -103,7 +103,7 @@ public class UI_commandWindow : MonoBehaviourPun
                 // Check the item we want to spawn is legit
                 if (spawnableItems.Contains(split[1]))
                 {
-                    p.gameObject.GetPhotonView().RPC("RpcDropItem", RpcTarget.MasterClient, split[1]);
+                    player.photonView.RPC("RpcDropItem", RpcTarget.MasterClient, split[1]);
                 } else
                 {
                     lm.Log(logSrc, $"Invalid SPAWN value: {split[1]}.");
@@ -111,12 +111,12 @@ public class UI_commandWindow : MonoBehaviourPun
                 break;
 
             case "BOT":
-                PhotonNetwork.InstantiateSceneObject("bot", p.GetComponent<FpsController>().lastHit.point, Quaternion.identity);
+                PhotonNetwork.InstantiateSceneObject("bot", player.lastHit.point, Quaternion.identity);
                 break;
 
             case "KILL":
                 // Currently you can only kill your own player
-                p.photonView.RPC("InstaKill", RpcTarget.All, 999);
+                player.photonView.RPC("InstaKill", RpcTarget.All, 999);
                 break;
 
             case "ROUNDRESTART":

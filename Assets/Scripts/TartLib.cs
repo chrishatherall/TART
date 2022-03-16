@@ -19,7 +19,7 @@ namespace TART
         InnocentWin,
         TraitorWin,
         DeathmatchWin,
-        PlayerDied    // A player died during a round
+        CharacterDied    // A character died during a round
     }
 
     public class TartRole
@@ -39,18 +39,18 @@ namespace TART
     // Used to define an amount of damage, including its source player
     public class Damage
     {
-        public int SourcePlayerID;
+        public int SourceCharacterId;
         public int Amount;
 
-        public Damage(int sourcePlayerID, int amount)
+        public Damage(int sourceCharacterId, int amount)
         {
-            SourcePlayerID = sourcePlayerID;
+            SourceCharacterId = sourceCharacterId;
             Amount = amount;
         }
 
-        public Damage(string sourcePlayerID, string amount)
+        public Damage(string sourceCharacterId, string amount)
         {
-            SourcePlayerID = int.Parse(sourcePlayerID);
+            SourceCharacterId = int.Parse(sourceCharacterId);
             Amount = int.Parse(amount);
         }
     }

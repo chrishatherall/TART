@@ -60,8 +60,8 @@ public class Gun : MonoBehaviourPun
     public AudioSource shotSound;
     // Reload sound
     public AudioSource reloadSound;
-    // Ref to fpscontoller of the person holding this gun, so we can add recoil to the camera via it
-    public FpsController fpsController;
+    // Ref to Player holding this gun, so we can add recoil to the camera via it
+    public Player player;
     // Ref to the camera, which we use for aiming
     public Camera cam;
 
@@ -72,7 +72,7 @@ public class Gun : MonoBehaviourPun
     [SerializeField]
     TrailRenderer DefTrail;
     // Ref to our player owner
-    Character p;
+    Character weilder;
     // Ref to our own helditem script
     HeldItem heldItemScript;
 
@@ -82,27 +82,27 @@ public class Gun : MonoBehaviourPun
     }
 
     // Called by the HeldItem script when the owner is set
-    public void SetOwner(int ownerPlayerId)
+    public void SetOwner(int ownerCharacterId)
     {
-        p = GameManager.gm.GetPlayerByID(ownerPlayerId);
-        if (!p)
+        weilder = GameManager.gm.GetCharacterById(ownerCharacterId);
+        if (!weilder)
         {
-            lm.LogError(logSrc,"Gun setup could not find player " + ownerPlayerId);
+            lm.LogError(logSrc,"Gun setup could not find character " + ownerCharacterId);
             return;
         }
 
-        this.transform.parent = p.itemAnchor.transform;
+        this.transform.parent = weilder.itemAnchor.transform;
         this.transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
         this.transform.localPosition = Vector3.zero;
-        p.heldItem = this.gameObject;
-        p.heldItemScript = heldItemScript;
+        weilder.heldItem = this.gameObject;
+        weilder.heldItemScript = heldItemScript;
 
         // If we're setting up for ourselves, set audio emitter to 2d so the gun firing noise
         // doesn't annoyingly favour one ear.
         if (photonView.IsMine)
         {
-            fpsController = GetComponentInParent<FpsController>();
-            cam = fpsController.cam;
+            player = GetComponentInParent<Player>();
+            cam = player.cam;
             GetComponent<AudioSource>().spatialBlend = 0f;
         }
     }
@@ -197,7 +197,7 @@ public class Gun : MonoBehaviourPun
             if (bp)
             {
                 // If we hit a bodypart, send an rpc to the parent player object
-                bp.TakeDamage(damage, bulletDirection * shotForce, p.ID, heldItemScript.nickname);
+                bp.TakeDamage(damage, bulletDirection * shotForce, weilder.ID, heldItemScript.nickname);
             }
 
             // TODO try a sendmessage(takedamage) instead
@@ -209,9 +209,9 @@ public class Gun : MonoBehaviourPun
         currentRecoil += recoilPerShot;
 
         // Add recoil to camera/character
-        if (fpsController)
+        if (player)
         {
-            fpsController.CameraWiggle = recoilPerShot /2;
+            player.CameraWiggle = recoilPerShot /2;
         } else
         {
             lm.LogError(logSrc,"Cannot find FpsController to add camera wiggle");

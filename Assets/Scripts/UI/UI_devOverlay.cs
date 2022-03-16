@@ -43,7 +43,7 @@ public class UI_devOverlay : MonoBehaviour
         // Game state
         info += "Game mode/state: " + gm.gamemode + ":" + gm.CurrentGameState + "\n";
         // Player info
-        gm.players.ForEach(delegate (Character p)
+        gm.characters.ForEach(delegate (Character p)
         {
             info += "[" + p.ID + ":" + p.nickname + "]\t" + p.Role.Name + "\toil/damage:" + p.oil + "/" + p.GetDamage() + "\t\tisDead:" + p.IsDead + "\tready:" + p.isReady + "\n";
         });

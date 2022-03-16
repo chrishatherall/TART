@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using static LogManager;
 
-// Pulls movement details from the FpsController, syncs those values to the network, and passes them to the animator
+// Pulls movement details from the Player, syncs those values to the network, and passes them to the animator
 
 public class PlayerAnimController : MonoBehaviour
 {

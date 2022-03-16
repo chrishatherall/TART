@@ -55,7 +55,7 @@ public class UI_ShowPlayerDetails : MonoBehaviour
         // Try to find a local player if we don't have one.
         if (!targetPlayer)
         {
-            targetPlayer = gm.players.Find(delegate (Character p)
+            targetPlayer = gm.characters.Find(delegate (Character p)
             {
                 return p && p.photonView && p.photonView.IsMine;
             });

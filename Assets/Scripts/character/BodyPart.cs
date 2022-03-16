@@ -75,8 +75,8 @@ public class BodyPart : MonoBehaviour, IDamageTaker
         if (!ps) lm.LogError(logSrc, "Missing particle system reference on " + this.name);
     }
 
-    // Should only be called from the local Player
-    public void AddDamage(int dmg, int sourcePlayerID, string sourceWeapon)
+    // Should only be called from the local client
+    public void AddDamage(int dmg, int sourceCharacterID, string sourceWeapon)
     {
         // Local only
         if (!p.photonView.IsMine)
@@ -86,7 +86,7 @@ public class BodyPart : MonoBehaviour, IDamageTaker
         }
         // TODO if we already have a Damage from this player and source, increase it
 
-        _damages.Add(new Damage(sourcePlayerID, dmg));
+        _damages.Add(new Damage(sourceCharacterID, dmg));
 
         // Recalculate _damage
         CalculateCurrentDamage();
@@ -130,7 +130,7 @@ public class BodyPart : MonoBehaviour, IDamageTaker
         string serial = this.name;
         foreach (Damage D in _damages)
         {
-            serial += $":{D.SourcePlayerID}:{D.Amount}";
+            serial += $":{D.SourceCharacterId}:{D.Amount}";
         }
 
         if (p.IsDead)

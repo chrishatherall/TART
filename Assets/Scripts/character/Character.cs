@@ -12,7 +12,11 @@ public delegate void EmptyEvent();
 
 public class Character : MonoBehaviourPunCallbacks, IPunObservable
 {
-    readonly string logSrc = "Player";
+    readonly string logSrc = "Character";
+
+    // Unique character ID
+    [SerializeField]
+    public int ID { get => photonView.ControllerActorNr; set {}  } // Cheap way to serialise
 
     // Role
     private TartRole _role;
@@ -23,18 +27,19 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
     public int maxOil = 100;
     // is the player dead
     private bool _isDead = false;
-    // Local player is loaded and ready to play a round
-    public bool isReady = false;
-    // Name of this player
+    // Name of this character
     public string nickname;
-    // The unique actor number provided by photon to networked players (alias is ID)
-    public int actorNumber;
-    // The thing this player is looking at
+    // Character is loaded and ready
+    public bool isReady = false;
+    // The thing this character is looking at
     public Vector3 aim;
     #endregion
 
     // Flag for bots
     public bool isBot;
+
+    // Ref to potential player controlling us. Null for bots
+    public Player controllingPlayer;
 
     // Movement
     public GameObject topOfHead;
@@ -75,9 +80,6 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
     // The item anchor gameobject
     public GameObject itemAnchor;
 
-    // Ref to an attached DeathmatchPlayer script
-    public DeathmatchPlayer DMPlayer;
-
     public AudioSource audioSrc;
     [SerializeField]
     AudioClip healSound;
@@ -94,8 +96,6 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
     // Public access for the role
     public TartRole Role { get => _role; }
 
-    // ID is a alias for actorNumber
-    public int ID { get => actorNumber; }
     public bool IsDead { 
         get => _isDead;
         set
@@ -150,7 +150,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
 
     // Cause of death
     bool diedToInstantDeath = false;
-    int instantDeathPlayer = -1;
+    int instantDeathCharacter = -1;
     string instantDeathWeapon = "Unknown";
 
     void Awake()
@@ -176,16 +176,11 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
         // Set our standing head height to whatever it is when we spawned
         standingHeadPos = topOfHead.transform.localPosition;
 
-        // Set ID/actorNumber to the same as our controlling player number
-        actorNumber = photonView.ControllerActorNr;
-
         // Set as ready, and apply nickname when the local player has loaded
-        if (photonView.IsMine)
-        {
+        if (photonView.IsMine) {
             if (isBot)
             {
-                actorNumber = 10000 + this.photonView.ViewID; // Probably not the safest
-                nickname = "BOT" + this.photonView.ViewID;
+                nickname = "BOT_" + ID;
             }
             else
             {
@@ -197,7 +192,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
 
         // Announce self to GM.
         lm.Log(logSrc, "Started. Announcing to GameManager.");
-        gm.AddPlayer(this);
+        gm.AddCharacter(this);
 
         // Parent self to gm's spawned-players object for cleanliness
         this.transform.parent = gm.playerSpawnParent;
@@ -216,7 +211,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
             stream.SendNext(IsCrouching);
             stream.SendNext(isReady);
             stream.SendNext(nickname);
-            stream.SendNext(actorNumber);
+            stream.SendNext(ID);
             stream.SendNext(aim);
 
             stream.SendNext(frontBackMovement);
@@ -235,7 +230,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
             this.IsCrouching = (bool)stream.ReceiveNext();
             this.isReady = (bool)stream.ReceiveNext();
             this.nickname = (string)stream.ReceiveNext();
-            this.actorNumber = (int)stream.ReceiveNext();
+            this.ID = (int)stream.ReceiveNext();
             this.aim = (Vector3)stream.ReceiveNext();
 
             this.frontBackMovement = (float)stream.ReceiveNext();
@@ -265,7 +260,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
             CharacterController charCon = GetComponent<CharacterController>();
             bool charConWasEnabled = charCon && charCon.enabled;
             if (charConWasEnabled) charCon.enabled = false;
-            Transform newTransform = gm.GetPlayerSpawnLocation();
+            Transform newTransform = gm.GetCharacterSpawnLocation();
             this.transform.position = newTransform.position;
             this.transform.rotation = newTransform.rotation;
             if (charConWasEnabled) charCon.enabled = true;
@@ -280,7 +275,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
         SetRagdoll(false);
 
         diedToInstantDeath = false;
-        instantDeathPlayer = -1;
+        instantDeathCharacter = -1;
 
         // Kind of a dirty fix, but works until we have a UI manager.
         if (photonView.IsMine) Cursor.lockState = CursorLockMode.Locked;
@@ -288,19 +283,20 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
 
     // Called from a remote/local BodyPart script when it is damaged.
     [PunRPC]
-    public void DamageBone(string bodyPartName, int dmg, Vector3 hitDirection, int sourcePlayerID, string sourceWeapon)
+    public void DamageBone(string bodyPartName, int dmg, Vector3 hitDirection, int sourceCharacterID, string sourceWeapon)
     {
         // Can't take more damage if we're dead
         if (IsDead) return;
 
-        // Play damage sound if we own this player
+        // Play damage sound if we own this 
+        // TODO should be if we're _controlling_
         if (photonView.IsMine) audioSrc.PlayOneShot(damageSound);
 
         BodyPart bp = GetBodyPartByName(bodyPartName);
         if (bp)
         {
             // Apply damage to the BodyPart
-            bp.AddDamage(dmg, sourcePlayerID, sourceWeapon);
+            bp.AddDamage(dmg, sourceCharacterID, sourceWeapon);
             // Apply force to the BodyPart
             bp.AddForce(hitDirection);
         }
@@ -308,15 +304,15 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
         // To make damage more responsive, kill player instantly if damage > oil
         if (GetDamage() > oil)
         {
-            Kill(hitDirection, sourcePlayerID, sourceWeapon);
+            Kill(hitDirection, sourceCharacterID, sourceWeapon);
         }
     }
 
-    // This is to allow the server to kill a player easily
+    // This is to allow the server to kill a character easily
     [PunRPC]
     public void InstaKill(int dmg)
     {
-        DamageBone("B-head", dmg, Vector3.up, -1, "Command"); // Source of the damage is player -1, essentially nobody
+        DamageBone("B-head", dmg, Vector3.up, -1, "Command"); // Source of the damage is character -1, essentially nobody
     }
 
     // TODO only heals 1 at a time. Ideally should distribute the healing to all BPs that need it, ratiod
@@ -356,7 +352,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
         sFootstepLastPlayed = Time.time;
     }
 
-    // Called on all clients by the fpscontroller
+    // Called on all clients
     [PunRPC]
     public void Jump()
     {
@@ -500,10 +496,10 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
 
     // Instantly kills this player. This is called on all clients when something instantly kills someone, to replicate the ragdoll nicely.
     // TODO This seems messy
-    public void Kill(Vector3 hitDirection, int playerID, string sourceWeapon)
+    public void Kill(Vector3 hitDirection, int characterId, string sourceWeapon)
     {
         diedToInstantDeath = true;
-        instantDeathPlayer = playerID;
+        instantDeathCharacter = characterId;
         instantDeathWeapon = sourceWeapon;
         //if (!photonView.IsMine)
         //{
@@ -536,9 +532,9 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
         string causeOfDeath = "Unknown";
         if (diedToInstantDeath)
         {
-            Character murderer = gm.GetPlayerByID(instantDeathPlayer);
+            Character murderer = gm.GetCharacterById(instantDeathCharacter);
             murdererName = murderer ? murderer.nickname : "Unknown";
-            murdererID = instantDeathPlayer;
+            murdererID = instantDeathCharacter;
             causeOfDeath = instantDeathWeapon;
         }
         else
@@ -551,7 +547,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
                 foreach (Damage D in bp.Damages)
                 {
                     // Find an entry in sumDamages for this player id
-                    Damage existing = sumDamages.FirstOrDefault(ED => ED.SourcePlayerID == D.SourcePlayerID);
+                    Damage existing = sumDamages.FirstOrDefault(ED => ED.SourceCharacterId == D.SourceCharacterId);
                     if (existing != null)
                     {
                         existing.Amount += D.Amount;
@@ -573,18 +569,18 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
                 {
                     if (D.Amount > murderer.Amount) murderer = D;
                 }
-                murdererName = gm.GetPlayerByID(murderer.SourcePlayerID).nickname;
-                murdererID = murderer.SourcePlayerID;
+                murdererName = gm.GetCharacterById(murderer.SourceCharacterId).nickname;
+                murdererID = murderer.SourceCharacterId;
                 causeOfDeath = "Oil Loss";
             }
         }
         // Raise a death event
         object[] args = { ID, murdererID, causeOfDeath };
-        gm.RaiseEvent(Events.PlayerDied, args);
+        gm.RaiseEvent(Events.CharacterDied, args);
 
         lm.Log(logSrc, $"[{ID}]{nickname} was killed by [{murdererID}]{murdererName} via {causeOfDeath}.");
 
-        // We don't need to do anything else if this isn't our player
+        // We don't need to do anything else if this isn't our character
         if (!this.photonView.IsMine) return;
 
         // Play death sound
@@ -592,7 +588,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
 
         // TODO this might be better hooking into an event to increase modularity
         // Try to drop our held item
-        FpsController fpsc = GetComponent<FpsController>();
+        Player fpsc = GetComponent<Player>();
         if (fpsc) fpsc.TryDropHeldItem();
 
         // Dont do any UI stuff for bots

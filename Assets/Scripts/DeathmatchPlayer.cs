@@ -27,8 +27,8 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
     public int c4Points;
     public int c4MaxPoints = 10;
 
-    // Ref to the attached player script
-    Character p;
+    // Ref to the attached Player script
+    Player player;
 
     // The audio clip played when we get an upgrade
     [SerializeField]
@@ -38,7 +38,7 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
         get => hasGrenade;
         set
         {
-            if (!hasGrenade && value && upgradeSound) p.audioSrc.PlayOneShot(upgradeSound);
+            if (!hasGrenade && value && upgradeSound) player.audioSource.PlayOneShot(upgradeSound);
             hasGrenade = value;
             if (!hasGrenade) grenadePoints = 0;
             RecalculateProgressBars();
@@ -49,7 +49,7 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
         get => hasC4;
         set
         {
-            if (!hasC4 && value && upgradeSound) p.audioSrc.PlayOneShot(upgradeSound);
+            if (!hasC4 && value && upgradeSound) player.audioSource.PlayOneShot(upgradeSound);
             hasC4 = value;
             if (!hasC4) c4Points = 0;
             RecalculateProgressBars();
@@ -60,14 +60,14 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
     // Start is called before the first frame update
     void Start()
     {
-        p = GetComponent<Character>();
+        player = GetComponent<Player>();
 
-        if (!p || !p.photonView.IsMine || gm.gamemode != "Deathmatch")
+        if (!player || !player.photonView.IsMine || gm.gamemode != "Deathmatch")
         {
             this.enabled = false;
         }
 
-        p.DMPlayer = this;
+        player.DMPlayer = this;
 
         RecalculateProgressBars();
 
@@ -75,15 +75,15 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
 
     public void OnEvent(EventData photonEvent)
     {
-        if (photonEvent.Code == (byte)Events.PlayerDied)
+        if (photonEvent.Code == (byte)Events.CharacterDied)
         {
             // object[] args = { ID, murdererID, causeOfDeath };
             object[] data = (object[])photonEvent.CustomData;
-            int deadPlayerID = (int)data[0];
+            int deadCharacterId = (int)data[0];
             int murdererID = (int)data[1];
 
             // If we're the murderer and we didn't kill ourselves
-            if (p.ID != deadPlayerID && murdererID == p.ID)
+            if (player.character.ID != deadCharacterId && murdererID == player.character.ID)
             {
                 grenadePoints++;
                 c4Points++;
@@ -109,7 +109,7 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
 
     void RecalculateProgressBars()
     {
-        if (!p.photonView.IsMine) return;
+        if (!player.photonView.IsMine) return;
 
         if (gm.curGrenadePointsImage && gm.maxGrenadePointsImage)
         {
@@ -142,15 +142,13 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
         if (HasGrenade && Input.GetKeyDown("f"))
         {
             // Throw grenade
-            FpsController fpsc = GetComponent<FpsController>();
-            if (fpsc && fpsc.TryDropItem("Grenade")) HasGrenade = false;
+            if (player && player.TryDropItem("Grenade")) HasGrenade = false;
         }
 
         if (HasC4 && Input.GetKeyDown("c"))
         {
             // Place c4
-            FpsController fpsc = GetComponent<FpsController>();
-            if (fpsc && fpsc.TryPlaceItem("C4", 2f)) HasC4 = false;
+            if (player && player.TryPlaceItem("C4", 2f)) HasC4 = false;
         }
     }
 

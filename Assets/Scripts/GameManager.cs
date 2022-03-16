@@ -61,8 +61,13 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     // Gamemode
     public string gamemode;
 
-    // Connected players. Player scripts add themselves on startup via AddPlayer
-    public List<Character> players;
+    // Active characters. Character scripts add themselves on startup via AddPlayer
+    public List<Character> characters;
+    // Next unique character ID;
+    private int nextUniqueCharacterId = 0;
+
+    // Connected players. Player scripts add themselves on startup.
+    public List<Player> players;
 
     // Minimum numbers of players required to start a round.
     public int minPlayers = 2;
@@ -212,8 +217,8 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     // Update is called once per frame
     void Update()
     {
-        // Remove any players from the list that don't exist
-        players.RemoveAll(delegate (Character p) { return !p; });
+        // Remove any characters from the list that don't exist
+        characters.RemoveAll(delegate (Character c) { return !c; });
 
         CalculateGameState();
     }
@@ -233,9 +238,9 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
                 {
                     // Pre-round
                     case GameState.PreRound:
-                        // Check we have enough players to start a round.
-                        List<Character> readyPlayers = players.FindAll(p => p.isReady);
-                        if (readyPlayers.Count >= minPlayers)
+                        // Check we have enough characters to start a round.
+                        List<Character> readyCharacters = characters.FindAll(p => p.isReady);
+                        if (readyCharacters.Count >= minPlayers)
                         {
                             // Use the pre-round time as a delay to avoid jarring gameplay
                             if (curPreRoundTime > 0)
@@ -255,7 +260,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
                         // Get living traitors and innocents.
                         int lTraitors = 0;
                         int lInnocents = 0;
-                        players.ForEach(delegate (Character p)
+                        characters.ForEach(delegate (Character p)
                         {
                             if (p.IsDead) return; // We don't care about dead people.
                             if (p.Role.ID == 1) lInnocents++;
@@ -319,15 +324,15 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
                     case GameState.Active:
                         // Check for an end-game state.
                         // First to X kills, find a player with required number of kills
-                        foreach (Character p in players)
+                        foreach (Player player in players)
                         {
-                            if (p.DMPlayer && p.DMPlayer.kills >= DeathmatchRequiredKills)
+                            if (player.DMPlayer && player.DMPlayer.kills >= DeathmatchRequiredKills)
                             {
                                 // Send out event for the win
-                                object[] eventData = new object[] { p.ID };
+                                object[] eventData = new object[] { player.character.ID };
                                 RaiseEvent(Events.DeathmatchWin, eventData);
-                                Alert($"Winner: {p.nickname}");
-                                ResetPlayers();
+                                Alert($"Winner: {player.character.nickname}");
+                                ResetCharacters();
 
                                 CurrentGameState = GameState.PostRound;
                             }
@@ -378,7 +383,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
             // Tell item spawners to spawn their items
             SpawnSceneItems();
 
-            ResetPlayers();            
+            ResetCharacters();            
         }
         #endregion
 
@@ -387,7 +392,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         {
             lm.Log(logSrc,"Round started!");
 
-            ResetPlayers();
+            ResetCharacters();
 
             // The stuff below is Deception only
             //if (PhotonNetwork.IsMasterClient)
@@ -427,7 +432,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         #endregion
     }
 
-    public Transform GetPlayerSpawnLocation()
+    public Transform GetCharacterSpawnLocation()
     {
         // TODO this should choose a random player spawn, but take into account other player's distance from
         // spawns. We don't want people spawning inside each other.
@@ -450,25 +455,42 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         return roles.Find(r => r.ID == id);
     }
 
-    public Character GetPlayerByID(int id)
+    public Character GetCharacterById(int id)
+    {
+        return characters.Find(p => p.ID == id);
+    }
+
+    public Player GetPlayerById(int id)
     {
         return players.Find(p => p.ID == id);
     }
 
-    public Character GetPlayerByActorNumber(int id)
+    public Player GetPlayerByCharacterId (int id)
     {
-        return players.Find(p => p.actorNumber == id);
+        Character c = GetCharacterById(id);
+        return c ? c.controllingPlayer : null;
     }
 
-    public void AddPlayer(Character player)
+    public void AddCharacter(Character character)
     {
-        if (GetPlayerByID(player.ID))
+        if (GetCharacterById(character.ID))
         {
-            lm.LogError(logSrc,"Tried to add player that already exists!");
+            lm.LogError(logSrc,"Tried to add character that already exists!");
+            return;
+        }
+        characters.Add(character);
+    }
+
+    public void AddPlayer(Player player)
+    {
+        if (GetPlayerById(player.ID))
+        {
+            lm.LogError(logSrc, "Tried to add player that already exists!");
             return;
         }
         players.Add(player);
     }
+
 
     // Spawns a player prefab for the player calling this
     public void SpawnMe()
@@ -481,7 +503,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         }
 
         // If this player has an active script, just respawn that prefab
-        Character existingPlayer = GetPlayerByActorNumber(PhotonNetwork.LocalPlayer.ActorNumber);
+        Player existingPlayer = GetPlayerById(PhotonNetwork.LocalPlayer.ActorNumber);
         if (existingPlayer)
         {
             // Reset components on player and give it a new spawn location.
@@ -489,7 +511,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         }
         else
         {
-            Transform spawn = GetPlayerSpawnLocation();
+            Transform spawn = GetCharacterSpawnLocation();
             // Spawn a character for the local player
             PhotonNetwork.Instantiate(this.playerPrefab.name, spawn.position, spawn.rotation, 0);
         }
@@ -528,13 +550,13 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         PhotonNetwork.Destroy(pv);
     }
 
-    public void ResetPlayers()
+    public void ResetCharacters()
     {
         if (!PhotonNetwork.IsMasterClient) return;
-        foreach (Character p in players)
+        foreach (Character c in characters)
         {
             // Reset players but don't force a full respawn
-            p.photonView.RPC("Reset", RpcTarget.All, false);
+            c.photonView.RPC("Reset", RpcTarget.All, false);
         }
     }
 

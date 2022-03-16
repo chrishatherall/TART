@@ -12,9 +12,12 @@ using static LogManager;
 // TODO also this script should only do control, it should not care about player state. Consider
 // moving item drops, activation, etc, to the player controller
 
-public class FpsController : MonoBehaviourPun
+public class Player : MonoBehaviourPun
 {
     readonly string logSrc = "FPS_CTRL";
+
+    [SerializeField]
+    public int ID { get => photonView.ControllerActorNr; set { } } // Cheap way to serialise
 
     #region Camera Movement Variables
     // Ref to camera component
@@ -58,7 +61,7 @@ public class FpsController : MonoBehaviourPun
     // last input, used when in the air
     Vector3 lastInput = Vector3.zero;
 
-    // Create a layermask which ignores layer 7, so we dont constantly activate ourselves
+    // Create a layermask which ignores layer 7, so we dont constantly activate/shoot ourselves
     int layermask = ~(1 << 7);
     // Range at which we can activate buttons/doors
     [SerializeField]
@@ -69,8 +72,11 @@ public class FpsController : MonoBehaviourPun
     Vector3 camTargetPoint;
     float camLerpSmoothTime = 0.1f;
     Vector3 camLerpVelocity = Vector3.zero;
-    // Reference to our player script
-    public Character p;
+
+    // Reference to the character we are currently controlling.
+    public Character character;
+    // Reference to our Deathmatch script
+    public DeathmatchPlayer DMPlayer;
 
     // The last raycast hit of our camera
     public RaycastHit lastHit;
@@ -81,7 +87,7 @@ public class FpsController : MonoBehaviourPun
     // Ref to the player inventory
     Inventory inventory;
     // The audio source we use to emit sounds from this character
-    private AudioSource audioSource;
+    public AudioSource audioSource;
 
     [SerializeField]
     AudioClip cannotPlaceClip;
@@ -111,7 +117,7 @@ public class FpsController : MonoBehaviourPun
     void Awake()
     {
         // Find player script
-        p = GetComponent<Character>();
+        character = GetComponent<Character>();
         // Find character controller
         charCon = GetComponent<CharacterController>();
         // Find the player inventory
@@ -123,7 +129,7 @@ public class FpsController : MonoBehaviourPun
         // Set rb dragger stuff
         fj = rbDragger.GetComponent<FixedJoint>();
 
-        if (!p || !charCon || !inventory || !cam || !CamWiggleObject)
+        if (!character || !charCon || !inventory || !cam || !CamWiggleObject)
         {
             lm.LogError(logSrc,"Missing components!");
         }
@@ -136,19 +142,23 @@ public class FpsController : MonoBehaviourPun
             charCon.enabled = true;
         }
 
+        // Announce self to GM.
+        lm.Log(logSrc, "Started. Announcing to GameManager.");
+        gm.AddPlayer(this);
+
         // Turn off the cursor
         Cursor.lockState = CursorLockMode.Locked;
 
         ccHeight = charCon.height;
         //camHeight = CamWiggleObject.transform.localPosition.y;
-        camHeadHeightDiff = p.topOfHead.transform.position.y - CamWiggleObject.transform.position.y;
+        camHeadHeightDiff = character.topOfHead.transform.position.y - CamWiggleObject.transform.position.y;
         camTargetPoint = CamWiggleObject.transform.localPosition;
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (p.IsDead) return; // Don't do anything if we're dead. Introduces a bug when dying in midair, but whatever
+        if (character.IsDead) return; // Don't do anything if we're dead. Introduces a bug when dying in midair, but whatever
 
         #region Camera
         // Control camera movement
@@ -185,12 +195,12 @@ public class FpsController : MonoBehaviourPun
         #endregion
 
         #region Crouching
-        if (!p.IsCrouching && Input.GetKey(KeyCode.LeftControl))
+        if (!character.IsCrouching && Input.GetKey(KeyCode.LeftControl))
         {
-            p.IsCrouching = true;
-            charCon.height = ccHeight * p.crouchHeightMultiplier;
+            character.IsCrouching = true;
+            charCon.height = ccHeight * character.crouchHeightMultiplier;
             charCon.center = new Vector3(0f, charCon.height / 2, 0f);
-            camTargetPoint = new Vector3(camTargetPoint.x, p.topOfHead.transform.localPosition.y - camHeadHeightDiff, camTargetPoint.z);
+            camTargetPoint = new Vector3(camTargetPoint.x, character.topOfHead.transform.localPosition.y - camHeadHeightDiff, camTargetPoint.z);
             // If in the air, raise our transform position by the same amount we move the camera down
             if (!charCon.isGrounded)
             {
@@ -199,16 +209,16 @@ public class FpsController : MonoBehaviourPun
                 CamWiggleObject.transform.localPosition = camTargetPoint;
             }
         }
-        if (p.IsCrouching && !Input.GetKey(KeyCode.LeftControl) && charCon.isGrounded) // Do not allow uncrouching in the air
+        if (character.IsCrouching && !Input.GetKey(KeyCode.LeftControl) && charCon.isGrounded) // Do not allow uncrouching in the air
         {
             // check to see if we can uncrouch, by casting a ray up and seeing if it's clear
-            bool canUncrouch = !Physics.Raycast(p.topOfHead.transform.position, Vector3.up, out RaycastHit crouchHit, ccHeight/2, layermask);
+            bool canUncrouch = !Physics.Raycast(character.topOfHead.transform.position, Vector3.up, out RaycastHit crouchHit, ccHeight/2, layermask);
             if (canUncrouch)
             {
-                p.IsCrouching = false;
+                character.IsCrouching = false;
                 charCon.center = new Vector3(0f, ccHeight / 2, 0f);
                 charCon.height = ccHeight;
-                camTargetPoint = new Vector3(camTargetPoint.x, p.topOfHead.transform.localPosition.y - camHeadHeightDiff, camTargetPoint.z);
+                camTargetPoint = new Vector3(camTargetPoint.x, character.topOfHead.transform.localPosition.y - camHeadHeightDiff, camTargetPoint.z);
             }
         }
         #endregion
@@ -218,19 +228,19 @@ public class FpsController : MonoBehaviourPun
         cursorTooltip.text = "";
 
         // Set grounded flag for the animation controller
-        p.IsGrounded = charCon.isGrounded;
+        character.IsGrounded = charCon.isGrounded;
 
         // Get input values 
-        p.frontBackMovement = Input.GetAxis("Vertical"); // NOTE These values are lerped!
-        p.leftRightMovement = Input.GetAxis("Horizontal");
+        character.frontBackMovement = Input.GetAxis("Vertical"); // NOTE These values are lerped!
+        character.leftRightMovement = Input.GetAxis("Horizontal");
 
         // This makes footsteps sound better when stopping
         //p.isMoving = p.frontBackMovement != 0f || p.leftRightMovement != 0f; // We're moving if there is any input
-        p.isMoving = Input.GetKey("w") || Input.GetKey("a") || Input.GetKey("s") || Input.GetKey("d");
+        character.isMoving = Input.GetKey("w") || Input.GetKey("a") || Input.GetKey("s") || Input.GetKey("d");
 
         // Get forward/strafe direction
-        Vector3 strafe = p.leftRightMovement * transform.right;
-        Vector3 forward = p.frontBackMovement * transform.forward;
+        Vector3 strafe = character.leftRightMovement * transform.right;
+        Vector3 forward = character.frontBackMovement * transform.forward;
         Vector3 moveDirection = forward + strafe;
         // Stop us going faster diagonally. If we're moving on multiple axis, scale back down
         if (moveDirection.magnitude > 1f) moveDirection = moveDirection.normalized;
@@ -254,18 +264,18 @@ public class FpsController : MonoBehaviourPun
         }
 
         // Half speed if crouching or shift-walking
-        if (p.IsCrouching || Input.GetKey(KeyCode.LeftShift))
+        if (character.IsCrouching || Input.GetKey(KeyCode.LeftShift))
         {
-            p.isRunning = false;
+            character.isRunning = false;
             // Cheap fix for air-crouchnig slowing you down, only actually reduce speed if grounded
-            if (p.IsGrounded) moveDirection *= 0.5f;
+            if (character.IsGrounded) moveDirection *= 0.5f;
         } else
         {
             // If not crouch/shiftwalking but still moving, we're running
-            p.isRunning = p.isMoving;
+            character.isRunning = character.isMoving;
         }
 
-        if (p.IsDead || p.isHealing) // Don't allow movement input if dead or healing, by overwriting input
+        if (character.IsDead || character.isHealing) // Don't allow movement input if dead or healing, by overwriting input
         {
             moveDirection = new Vector3();
         }
@@ -275,9 +285,9 @@ public class FpsController : MonoBehaviourPun
             fallingSpeed = -0.3f; // When on the ground we set a little downward speed otherwise the controller seems 
             // to 'bounce' on the ground and half the time doesn't consider itself grounded.
             // Go up if we're hitting jump.
-            if (!p.IsDead && Input.GetKey("space"))
+            if (!character.IsDead && Input.GetKey("space"))
             {
-                p.photonView.RPC("Jump", RpcTarget.All);
+                character.photonView.RPC("Jump", RpcTarget.All);
                 fallingSpeed = jumpStrength;
             }
         }
@@ -297,15 +307,15 @@ public class FpsController : MonoBehaviourPun
 
         #region Key-specific events
         // Throw objects
-        if (Input.GetKeyDown("g") && p.heldItem)
+        if (Input.GetKeyDown("g") && character.heldItem)
         {
             TryDropHeldItem();
         }
 
         // Reload
-        if (Input.GetKeyDown("r") && p.heldItem)
+        if (Input.GetKeyDown("r") && character.heldItem)
         {
-            p.heldItem.SendMessage("Reload");
+            character.heldItem.SendMessage("Reload");
         }
 
         // Switch mesh renderer on/off
@@ -321,7 +331,7 @@ public class FpsController : MonoBehaviourPun
         }
 
         // healing
-        p.isHealing = Input.GetKey("h");
+        character.isHealing = Input.GetKey("h");
         #endregion
 
         #region Interaction
@@ -336,7 +346,7 @@ public class FpsController : MonoBehaviourPun
         {
             // Set our last hit to this point
             lastHit = hit;
-            p.aim = hit.point;
+            character.aim = hit.point;
 
             // We can't pickup or activate anything beyond our range.
             if (Vector3.Distance(rayOrigin, hit.point) < activateRange)
@@ -406,18 +416,17 @@ public class FpsController : MonoBehaviourPun
 
         #region Misc
         // Tell held item about some stuff
-        if (p.heldItemScript)
+        if (character.heldItemScript)
         {
-            p.heldItemScript.SetValues(rayOrigin, Input.GetButton("Fire1"));
+            character.heldItemScript.SetValues(rayOrigin, Input.GetButton("Fire1"));
         }
         #endregion
     }
 
-    // TODO should be on player
     void TryPickupItem(GameObject item)
     {
         // If the player is already holding an item, drop it before picking up the new one
-        if (p.heldItem)
+        if (character.heldItem)
         {
             // TODO needs to be run on server?? Or we could run it here and set ownership to the scene
             TryDropHeldItem();
@@ -430,10 +439,10 @@ public class FpsController : MonoBehaviourPun
 
         if (!item || !PV || !pickup)
         {
-            lm.LogError(logSrc, $"player {p.ID} tried to pick up missing item");
+            lm.LogError(logSrc, $"player {character.ID} tried to pick up missing item");
             return;
         }
-        lm.Log(logSrc, $"player {p.ID} is picking up {pickup.nickname}");
+        lm.Log(logSrc, $"player {character.ID} is picking up {pickup.nickname}");
 
         // Play sound if the pickup has one
         if (pickup.pickupSound)
@@ -452,7 +461,7 @@ public class FpsController : MonoBehaviourPun
         }
 
         // Create new item in our hands
-        GameObject newItem = PhotonNetwork.Instantiate(pickup.prefabHeld.name, p.itemAnchor.transform.position, Quaternion.identity);
+        GameObject newItem = PhotonNetwork.Instantiate(pickup.prefabHeld.name, character.itemAnchor.transform.position, Quaternion.identity);
 
         // Server should destroy the original
         GameManager.gm.photonView.RPC("DestroyItem", RpcTarget.MasterClient, PV.ViewID);
@@ -469,10 +478,10 @@ public class FpsController : MonoBehaviourPun
     // Drops our held item into the world. Called when we press G or on death
     public void TryDropHeldItem ()
     {
-        if (!p.heldItem || !p.heldItemScript) return;
-        TryDropItem(p.heldItemScript.worldPrefab.name);
+        if (!character.heldItem || !character.heldItemScript) return;
+        TryDropItem(character.heldItemScript.worldPrefab.name);
         // Destroy the item in our hands.
-        PhotonNetwork.Destroy(p.heldItem);
+        PhotonNetwork.Destroy(character.heldItem);
     }
 
     // Drops an item into the world
@@ -522,7 +531,7 @@ public class FpsController : MonoBehaviourPun
     void RpcDropItem (string prefabName)
     {
         if (!PhotonNetwork.IsMasterClient) return;
-        lm.Log(logSrc,$"Player {p.ID} dropping item {prefabName}");
+        lm.Log(logSrc,$"Player {character.ID} dropping item {prefabName}");
         // Create item being dropped
         GameObject go = PhotonNetwork.InstantiateRoomObject(prefabName, cam.transform.position, transform.rotation);
         if (!go) return; // Account for errors when instantiating objects
@@ -538,7 +547,7 @@ public class FpsController : MonoBehaviourPun
     /// <param name="position">Position at which the activation occurred, usually a raycast hit</param>
     void TryToActivate(GameObject go, Vector3 position)
     {
-        if (p.IsDead) return;
+        if (character.IsDead) return;
         // Find an activatable
         Activatable act = go.GetComponent<Activatable>();
         if (!act) return;
