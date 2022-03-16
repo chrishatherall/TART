@@ -43,7 +43,7 @@ public class PlayerAnimController : MonoBehaviour
   
     // Component references
     Animator animator;
-    Player p;
+    Character p;
 
     public void Start()
     {
@@ -52,7 +52,7 @@ public class PlayerAnimController : MonoBehaviour
         if (bSpine) defbSpine = bSpine.transform.localRotation;
 
         animator = GetComponent<Animator>();
-        p = GetComponent<Player>();
+        p = GetComponent<Character>();
 
         if (!animator || !p)
         {

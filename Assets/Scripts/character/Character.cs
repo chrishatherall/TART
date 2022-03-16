@@ -10,7 +10,7 @@ using static LogManager;
 // Delegate signature for empty events // TODO no idea if I actually need this
 public delegate void EmptyEvent();
 
-public class Player : MonoBehaviourPunCallbacks, IPunObservable
+public class Character : MonoBehaviourPunCallbacks, IPunObservable
 {
     readonly string logSrc = "Player";
 
@@ -536,7 +536,7 @@ public class Player : MonoBehaviourPunCallbacks, IPunObservable
         string causeOfDeath = "Unknown";
         if (diedToInstantDeath)
         {
-            Player murderer = gm.GetPlayerByID(instantDeathPlayer);
+            Character murderer = gm.GetPlayerByID(instantDeathPlayer);
             murdererName = murderer ? murderer.nickname : "Unknown";
             murdererID = instantDeathPlayer;
             causeOfDeath = instantDeathWeapon;

@@ -28,7 +28,7 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
     public int c4MaxPoints = 10;
 
     // Ref to the attached player script
-    Player p;
+    Character p;
 
     // The audio clip played when we get an upgrade
     [SerializeField]
@@ -60,7 +60,7 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
     // Start is called before the first frame update
     void Start()
     {
-        p = GetComponent<Player>();
+        p = GetComponent<Character>();
 
         if (!p || !p.photonView.IsMine || gm.gamemode != "Deathmatch")
         {

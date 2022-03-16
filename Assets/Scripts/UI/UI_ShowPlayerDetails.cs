@@ -6,7 +6,7 @@ using static GameManager;
 public class UI_ShowPlayerDetails : MonoBehaviour
 {
     // The player we're showing values for.
-    public Player targetPlayer;
+    public Character targetPlayer;
     // The health value box
     public UnityEngine.UI.Text healthValue;
     // Current health image, which scales X with health value
@@ -55,7 +55,7 @@ public class UI_ShowPlayerDetails : MonoBehaviour
         // Try to find a local player if we don't have one.
         if (!targetPlayer)
         {
-            targetPlayer = gm.players.Find(delegate (Player p)
+            targetPlayer = gm.players.Find(delegate (Character p)
             {
                 return p && p.photonView && p.photonView.IsMine;
             });

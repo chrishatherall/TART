@@ -89,7 +89,7 @@ public class UI_commandWindow : MonoBehaviourPun
         }
 
         // Get player who sent the command
-        Player p = gm.GetPlayerByActorNumber(pmi.Sender.ActorNumber);
+        Character p = gm.GetPlayerByActorNumber(pmi.Sender.ActorNumber);
         if (!p)
         {
             lm.LogError(logSrc, $"Couldnt find player {pmi.Sender.ActorNumber}.");

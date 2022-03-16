@@ -62,7 +62,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     public string gamemode;
 
     // Connected players. Player scripts add themselves on startup via AddPlayer
-    public List<Player> players;
+    public List<Character> players;
 
     // Minimum numbers of players required to start a round.
     public int minPlayers = 2;
@@ -213,7 +213,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     void Update()
     {
         // Remove any players from the list that don't exist
-        players.RemoveAll(delegate (Player p) { return !p; });
+        players.RemoveAll(delegate (Character p) { return !p; });
 
         CalculateGameState();
     }
@@ -234,7 +234,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
                     // Pre-round
                     case GameState.PreRound:
                         // Check we have enough players to start a round.
-                        List<Player> readyPlayers = players.FindAll(p => p.isReady);
+                        List<Character> readyPlayers = players.FindAll(p => p.isReady);
                         if (readyPlayers.Count >= minPlayers)
                         {
                             // Use the pre-round time as a delay to avoid jarring gameplay
@@ -255,7 +255,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
                         // Get living traitors and innocents.
                         int lTraitors = 0;
                         int lInnocents = 0;
-                        players.ForEach(delegate (Player p)
+                        players.ForEach(delegate (Character p)
                         {
                             if (p.IsDead) return; // We don't care about dead people.
                             if (p.Role.ID == 1) lInnocents++;
@@ -319,7 +319,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
                     case GameState.Active:
                         // Check for an end-game state.
                         // First to X kills, find a player with required number of kills
-                        foreach (Player p in players)
+                        foreach (Character p in players)
                         {
                             if (p.DMPlayer && p.DMPlayer.kills >= DeathmatchRequiredKills)
                             {
@@ -450,17 +450,17 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         return roles.Find(r => r.ID == id);
     }
 
-    public Player GetPlayerByID(int id)
+    public Character GetPlayerByID(int id)
     {
         return players.Find(p => p.ID == id);
     }
 
-    public Player GetPlayerByActorNumber(int id)
+    public Character GetPlayerByActorNumber(int id)
     {
         return players.Find(p => p.actorNumber == id);
     }
 
-    public void AddPlayer(Player player)
+    public void AddPlayer(Character player)
     {
         if (GetPlayerByID(player.ID))
         {
@@ -481,7 +481,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         }
 
         // If this player has an active script, just respawn that prefab
-        Player existingPlayer = GetPlayerByActorNumber(PhotonNetwork.LocalPlayer.ActorNumber);
+        Character existingPlayer = GetPlayerByActorNumber(PhotonNetwork.LocalPlayer.ActorNumber);
         if (existingPlayer)
         {
             // Reset components on player and give it a new spawn location.
@@ -531,7 +531,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     public void ResetPlayers()
     {
         if (!PhotonNetwork.IsMasterClient) return;
-        foreach (Player p in players)
+        foreach (Character p in players)
         {
             // Reset players but don't force a full respawn
             p.photonView.RPC("Reset", RpcTarget.All, false);

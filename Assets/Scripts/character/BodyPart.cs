@@ -10,7 +10,7 @@ public class BodyPart : MonoBehaviour, IDamageTaker
     readonly string logSrc = "BodyPart";
 
     // Ref to our parent Player script
-    public Player p;
+    public Character p;
 
     // Cumulative force
     public Vector3 cumulativeForce = new Vector3();
@@ -68,7 +68,7 @@ public class BodyPart : MonoBehaviour, IDamageTaker
     void Awake()
     {
         _damages = new List<Damage>();
-        p = GetComponentInParent<Player>();
+        p = GetComponentInParent<Character>();
         if (!p) lm.LogError(logSrc, $"{this.name} could not find parent Player. This WILL cause errors!");
         collider = GetComponent<Collider>();
         // Warn if ps isn't set. Add bone name.

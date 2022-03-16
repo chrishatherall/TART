@@ -72,7 +72,7 @@ public class Gun : MonoBehaviourPun
     [SerializeField]
     TrailRenderer DefTrail;
     // Ref to our player owner
-    Player p;
+    Character p;
     // Ref to our own helditem script
     HeldItem heldItemScript;
 

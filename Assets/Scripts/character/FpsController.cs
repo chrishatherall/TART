@@ -70,7 +70,7 @@ public class FpsController : MonoBehaviourPun
     float camLerpSmoothTime = 0.1f;
     Vector3 camLerpVelocity = Vector3.zero;
     // Reference to our player script
-    public Player p;
+    public Character p;
 
     // The last raycast hit of our camera
     public RaycastHit lastHit;
@@ -111,7 +111,7 @@ public class FpsController : MonoBehaviourPun
     void Awake()
     {
         // Find player script
-        p = GetComponent<Player>();
+        p = GetComponent<Character>();
         // Find character controller
         charCon = GetComponent<CharacterController>();
         // Find the player inventory
