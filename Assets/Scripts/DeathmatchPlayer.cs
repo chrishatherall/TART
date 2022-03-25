@@ -38,7 +38,7 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
         get => hasGrenade;
         set
         {
-            if (!hasGrenade && value && upgradeSound) player.audioSource.PlayOneShot(upgradeSound);
+            if (!hasGrenade && value && upgradeSound) player.PlaySound(upgradeSound);
             hasGrenade = value;
             if (!hasGrenade) grenadePoints = 0;
             RecalculateProgressBars();
@@ -49,7 +49,7 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
         get => hasC4;
         set
         {
-            if (!hasC4 && value && upgradeSound) player.audioSource.PlayOneShot(upgradeSound);
+            if (!hasC4 && value && upgradeSound) player.PlaySound(upgradeSound);
             hasC4 = value;
             if (!hasC4) c4Points = 0;
             RecalculateProgressBars();

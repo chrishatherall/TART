@@ -34,6 +34,8 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     public GameObject ui;
     // The player prefab we spawn for ourselves
     public GameObject playerPrefab;
+    // The character prefab for player characters
+    public GameObject characterPrefab;
 
     // Ref to the special weapon UI elements for Deathmatch
     public UnityEngine.UI.Image curGrenadePointsImage;
@@ -63,8 +65,6 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
 
     // Active characters. Character scripts add themselves on startup via AddPlayer
     public List<Character> characters;
-    // Next unique character ID;
-    private int nextUniqueCharacterId = 0;
 
     // Connected players. Player scripts add themselves on startup.
     public List<Player> players;
@@ -113,6 +113,7 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     // The object which scene-spawned items/players should parent to, purely for cleanliness. 
     public Transform itemSpawnParent;
     public Transform playerSpawnParent;
+    public Transform characterSpawnParent;
 
     // TODO these should be on some kind of player manager, which also hosts anything related to a specific player (death screen, spectator mode prefab, player ui, etc)
     // Basically this GM should only care about the game itself
@@ -163,7 +164,6 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         PhotonNetwork.LeaveRoom();
         Application.LoadLevel(0);
     }
-
 
     void Awake()
     {
@@ -503,18 +503,23 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         }
 
         // If this player has an active script, just respawn that prefab
-        Player existingPlayer = GetPlayerById(PhotonNetwork.LocalPlayer.ActorNumber);
+/*        Player existingPlayer = GetPlayerById(PhotonNetwork.LocalPlayer.ActorNumber);
         if (existingPlayer)
         {
             // Reset components on player and give it a new spawn location.
             existingPlayer.photonView.RPC("Reset", RpcTarget.All, false);
         }
         else
-        {
-            Transform spawn = GetCharacterSpawnLocation();
-            // Spawn a character for the local player
-            PhotonNetwork.Instantiate(this.playerPrefab.name, spawn.position, spawn.rotation, 0);
-        }
+        {*/
+        Transform charSpawn = GetCharacterSpawnLocation();
+        Vector3 spawnPosition = new Vector3(0f, 1000f, 0f);
+        // Spawn a Player for the local player
+        GameObject player = PhotonNetwork.Instantiate(this.playerPrefab.name, spawnPosition, Quaternion.identity, 0);
+        // Spawn a Character for the local player
+        GameObject character = PhotonNetwork.Instantiate(this.characterPrefab.name, charSpawn.position, charSpawn.rotation, 0);
+        // Set controlling character
+        player.GetComponent<Player>().TakeCharacterControl(character.GetComponent<Character>());
+        //}
     }
 
     // This is kinda a temp thing to make sure our player goes back to the main menu when disconnected

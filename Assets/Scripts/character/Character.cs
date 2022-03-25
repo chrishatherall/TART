@@ -16,10 +16,91 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
 
     // Unique character ID
     [SerializeField]
-    public int ID { get => photonView.ControllerActorNr; set {}  } // Cheap way to serialise
+    public int ID; // Cheap way to serialise
 
     // Role
     private TartRole _role;
+
+    #region camera
+    public Camera Camera { get => cam; }
+    [SerializeField]
+    Camera cam;
+    // Public variables
+    public float fov = 60f;
+    public bool invertCamera = false;
+    //public bool cameraCanMove = true;
+    public float mouseSensitivity = 2f;
+    public float maxLookAngle = 50f;
+    // Camera wiggle. Every time this is set, the rotation of the CameraWiggler object is randomised (to this scale).
+    // Eg, a C4 knock will set this very high once. Guns will set this low quite often.
+    // This is reduced over time by a set amount.
+    public float _camWiggle; // Effectively degrees of rotation for x/y.
+    public float CamWiggleReductionPerSecond = 6f;
+    // Ref to the wiggle object, parent of our camera
+    public GameObject CamWiggleObject;
+    // The difference between our head height and our cam height
+    public float camHeadHeightDiff;
+    // The target camera position for our cam lerper. Adjusted when crouching
+    public Vector3 camTargetPoint;
+    public float camLerpSmoothTime = 0.1f;
+    public Vector3 camLerpVelocity = Vector3.zero;
+    // The last raycast hit of our camera
+    public RaycastHit lastHit;
+
+    public float CameraWiggle
+    {
+        get => _camWiggle;
+        set
+        {
+            // Ignore lower values.
+            if (_camWiggle > value) return;
+            // Do not allow value to be absurd.
+            _camWiggle = Mathf.Clamp(value, 0f, 10f);
+            // Set rotation of cam wiggle object
+            Vector3 curRot = CamWiggleObject.transform.localEulerAngles;
+            float y = curRot.y + _camWiggle * Random.Range(-0.25f, 0.25f); // Y wiggle (left/right) can go either way.
+            float x = curRot.x + _camWiggle * Random.Range(0f, -1f); // X wiggle (up/down) only goes up. 
+            Quaternion newRot = Quaternion.Euler(x, y, 0f);
+            CamWiggleObject.transform.localRotation = newRot;
+        }
+
+    }
+    #endregion
+
+    #region Magneto-stick style dragger
+    // Ref to our rigidBody dragger
+    [SerializeField]
+    public GameObject rbDragger;
+    public FixedJoint fj;
+    #endregion
+
+    #region Character movement
+    // Character move speed.
+    public float speed = 6.0f;
+    // Strength of gravity
+    [SerializeField]
+    public float gravity = -10f;
+    // Speed at which the character is falling.
+    [SerializeField]
+    public float fallingSpeed = 0f;
+    // Strength of a jump.
+    [SerializeField]
+    public float jumpStrength = 6f;
+    public GameObject topOfHead;
+    public Vector3 standingHeadPos;
+    // Movement values for animation controller
+    public bool _isGrounded;
+    public float frontBackMovement;
+    public float leftRightMovement;
+    public bool _isCrouching;
+    public bool isMoving;
+    public bool isRunning;
+    public float crouchHeightMultiplier = 0.66f;
+    // Velocity 
+    public float[] last3FramesVelocity = { 1f, 1f, 1f };
+    public CharacterController charCon;
+    public float ccHeight;
+    #endregion
 
     #region Sync'd variables
     // Oil is effectively hitpoints
@@ -35,26 +116,23 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
     public Vector3 aim;
     #endregion
 
+    // Range at which we can activate buttons/doors
+    [SerializeField]
+    public float activateRange = 2f;
+
+    // Ref to the character inventory
+    public Inventory inventory;
+
+    // The audio source we use to emit sounds from this character
+    public AudioSource audioSource;
+    // Audio listener on this character
+    public AudioListener audioListener;
+
     // Flag for bots
     public bool isBot;
 
     // Ref to potential player controlling us. Null for bots
     public Player controllingPlayer;
-
-    // Movement
-    public GameObject topOfHead;
-    Vector3 standingHeadPos;
-    // Movement values for animation controller
-    bool _isGrounded;
-    public float frontBackMovement;
-    public float leftRightMovement;
-    bool _isCrouching;
-    public bool isMoving;
-    public bool isRunning;
-    public float crouchHeightMultiplier = 0.66f;
-    // Velocity 
-    float[] last3FramesVelocity = { 1f, 1f, 1f };
-    CharacterController charCon;
 
     // Footsteps
     [SerializeField]
@@ -80,7 +158,6 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
     // The item anchor gameobject
     public GameObject itemAnchor;
 
-    public AudioSource audioSrc;
     [SerializeField]
     AudioClip healSound;
 
@@ -155,6 +232,9 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
 
     void Awake()
     {
+        // Set our Id using the unique photonView id
+        ID = photonView.ViewID;
+
         // GM might not be ready yet.
         if (!gm)
         {
@@ -164,6 +244,12 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
 
         charCon = GetComponent<CharacterController>();
 
+        // Set some character controller/camera heights
+        ccHeight = charCon.height;
+        //camHeight = CamWiggleObject.transform.localPosition.y;
+        camHeadHeightDiff = topOfHead.transform.position.y - CamWiggleObject.transform.position.y;
+        camTargetPoint = CamWiggleObject.transform.localPosition;
+
         // Set ourselves as default role
         this._role = gm.GetRoleFromID(0);
 
@@ -171,10 +257,13 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
         bodyParts = GetComponentsInChildren<BodyPart>();
 
         // Find our audio source
-        audioSrc = GetComponent<AudioSource>();
+        audioSource = GetComponent<AudioSource>();
 
         // Set our standing head height to whatever it is when we spawned
         standingHeadPos = topOfHead.transform.localPosition;
+
+        // Set rb dragger stuff
+        fj = rbDragger.GetComponent<FixedJoint>();
 
         // Set as ready, and apply nickname when the local player has loaded
         if (photonView.IsMine) {
@@ -290,7 +379,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
 
         // Play damage sound if we own this 
         // TODO should be if we're _controlling_
-        if (photonView.IsMine) audioSrc.PlayOneShot(damageSound);
+        if (photonView.IsMine) audioSource.PlayOneShot(damageSound);
 
         BodyPart bp = GetBodyPartByName(bodyPartName);
         if (bp)
@@ -348,7 +437,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
         // Cast a ray down at the thing under our feet
         bool hit = Physics.Raycast(this.transform.position, Vector3.down, out RaycastHit footstepHit, 1f);
         if (!hit) return;
-        if (audioSrc) audioSrc.PlayOneShot(gm.GetFootstepByMaterial(footstepHit.collider.material), fFootstepVolume * volumeMultiplier);
+        if (audioSource) audioSource.PlayOneShot(gm.GetFootstepByMaterial(footstepHit.collider.material), fFootstepVolume * volumeMultiplier);
         sFootstepLastPlayed = Time.time;
     }
 
@@ -364,14 +453,14 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
     public void DoHealVisuals()
     {
         // Play sound
-        if (audioSrc && healSound) audioSrc.PlayOneShot(healSound);
+        if (audioSource && healSound) audioSource.PlayOneShot(healSound);
     }
 
     [PunRPC]
     public void DoThrowVisuals()
     {
         // Play sound
-        if (audioSrc && throwSound) audioSrc.PlayOneShot(throwSound);
+        if (audioSource && throwSound) audioSource.PlayOneShot(throwSound);
     }
 
     // Ticks happen once a second. Why though? Is it so we reduce network sync traffic?
@@ -421,7 +510,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
             // Leak oil if damaged
             if (dmg > 0 && oil > 0)
             {
-                if (!IsDead) audioSrc.PlayOneShot(damageSound);
+                if (!IsDead) audioSource.PlayOneShot(damageSound);
                 oil -= dmg; // TODO: Hook into this change to create oil leaks on the floor. Oil can still leak if dead via other means, creating cool oil pools.
                 // If we're out of oil and not dead, die.
                 if (oil <= 0 && !IsDead)
@@ -584,7 +673,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
         if (!this.photonView.IsMine) return;
 
         // Play death sound
-        audioSrc.PlayOneShot(deathSound);
+        audioSource.PlayOneShot(deathSound);
 
         // TODO this might be better hooking into an event to increase modularity
         // Try to drop our held item

@@ -61,7 +61,7 @@ public class Gun : MonoBehaviourPun
     // Reload sound
     public AudioSource reloadSound;
     // Ref to Player holding this gun, so we can add recoil to the camera via it
-    public Player player;
+    public Character character;
     // Ref to the camera, which we use for aiming
     public Camera cam;
 
@@ -101,8 +101,8 @@ public class Gun : MonoBehaviourPun
         // doesn't annoyingly favour one ear.
         if (photonView.IsMine)
         {
-            player = GetComponentInParent<Player>();
-            cam = player.cam;
+            character = GetComponentInParent<Character>();
+            cam = character.Camera;
             GetComponent<AudioSource>().spatialBlend = 0f;
         }
     }
@@ -209,9 +209,9 @@ public class Gun : MonoBehaviourPun
         currentRecoil += recoilPerShot;
 
         // Add recoil to camera/character
-        if (player)
+        if (character)
         {
-            player.CameraWiggle = recoilPerShot /2;
+            character.CameraWiggle = recoilPerShot /2;
         } else
         {
             lm.LogError(logSrc,"Cannot find FpsController to add camera wiggle");

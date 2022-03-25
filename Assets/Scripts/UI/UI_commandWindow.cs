@@ -111,7 +111,7 @@ public class UI_commandWindow : MonoBehaviourPun
                 break;
 
             case "BOT":
-                PhotonNetwork.InstantiateSceneObject("bot", player.lastHit.point, Quaternion.identity);
+                PhotonNetwork.InstantiateSceneObject("character", player.character.lastHit.point, Quaternion.identity);
                 break;
 
             case "KILL":

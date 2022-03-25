@@ -17,130 +17,44 @@ public class Player : MonoBehaviourPun
     readonly string logSrc = "FPS_CTRL";
 
     [SerializeField]
-    public int ID { get => photonView.ControllerActorNr; set { } } // Cheap way to serialise
+    public int ID;
 
-    #region Camera Movement Variables
-    // Ref to camera component
+    // Ref to camera component, used for UI rendering
     public Camera cam;
-    // Public variables
-    public float fov = 60f;
-    public bool invertCamera = false;
-    public bool cameraCanMove = true;
-    public float mouseSensitivity = 2f;
-    public float maxLookAngle = 50f;
-    // Internal Variables - these could be modified by guns for recoil
-    private float yaw = 0.0f;
-    private float pitch = 0.0f;
-    // Camera wiggle. Every time this is set, the rotation of the CameraWiggler object is randomised (to this scale).
-    // Eg, a C4 knock will set this very high once. Guns will set this low quite often.
-    // This is reduced over time by a set amount.
-    private float _camWiggle; // Effectively degrees of rotation for x/y.
-    [SerializeField]
-    float CamWiggleReductionPerSecond = 6f;
-    // Ref to the wiggle object, parent of our camera
-    [SerializeField]
-    GameObject CamWiggleObject;
-    // Ref to our rigidBody dragger
-    [SerializeField]
-    GameObject rbDragger;
-    FixedJoint fj;
-    #endregion
 
-    // Character move speed.
-    [SerializeField]
-    float speed = 6.0f;
-    // Strength of gravity
-    [SerializeField]
-    float gravity = -10f;
-    // Speed at which the character is falling.
-    [SerializeField]
-    float fallingSpeed = 0f;
-    // Strength of a jump.
-    [SerializeField]
-    float jumpStrength = 6f;
     // last input, used when in the air
     Vector3 lastInput = Vector3.zero;
 
     // Create a layermask which ignores layer 7, so we dont constantly activate/shoot ourselves
     int layermask = ~(1 << 7);
-    // Range at which we can activate buttons/doors
-    [SerializeField]
-    float activateRange = 2f;
-    // The difference between our head height and our cam height
-    float camHeadHeightDiff;
-    // The target camera position for our cam lerper. Adjusted when crouching
-    Vector3 camTargetPoint;
-    float camLerpSmoothTime = 0.1f;
-    Vector3 camLerpVelocity = Vector3.zero;
 
     // Reference to the character we are currently controlling.
     public Character character;
+    Character c { get => character; } // Just an easy internal ref to character
     // Reference to our Deathmatch script
     public DeathmatchPlayer DMPlayer;
 
-    // The last raycast hit of our camera
-    public RaycastHit lastHit;
-    
-    // Ref to the character controller.
-    CharacterController charCon;
-    float ccHeight;
-    // Ref to the player inventory
-    Inventory inventory;
-    // The audio source we use to emit sounds from this character
-    public AudioSource audioSource;
-
+    AudioSource audioSource; // Audio source for just this player, for UI sounds and such
+    AudioListener audioListener;
     [SerializeField]
     AudioClip cannotPlaceClip;
 
     // The text box shown below our cursor, for displaying information on pickups, activatables, etc
     public UnityEngine.UI.Text cursorTooltip;
 
-    public float CameraWiggle {
-        get => _camWiggle; 
-        set 
-        {
-            // Ignore lower values.
-            if (_camWiggle > value) return;
-            // Do not allow value to be absurd.
-            _camWiggle = Mathf.Clamp(value, 0f, 10f);
-            // Set rotation of cam wiggle object
-            Vector3 curRot = CamWiggleObject.transform.localEulerAngles;
-            float y = curRot.y + _camWiggle * Random.Range(-0.25f, 0.25f); // Y wiggle (left/right) can go either way.
-            float x = curRot.x + _camWiggle * Random.Range(0f, -1f); // X wiggle (up/down) only goes up. 
-            Quaternion newRot = Quaternion.Euler(x, y, 0f);
-            CamWiggleObject.transform.localRotation = newRot;
-        }
-        
-    }
+    float pitch = 0f; // desired character camera pitch, shouldnt be here
 
     // Use this for initialization
     void Awake()
     {
-        // Find player script
-        character = GetComponent<Character>();
-        // Find character controller
-        charCon = GetComponent<CharacterController>();
-        // Find the player inventory
-        inventory = GetComponent<Inventory>();
-        // Find camera
+        // Set our id using the unique photonview
+        ID = photonView.ControllerActorNr;
+        // Find UI camera
         cam = GetComponentInChildren<Camera>();
-        // Find local audio source, used for pickup sounds
+        // Find audio source
         audioSource = GetComponent<AudioSource>();
-        // Set rb dragger stuff
-        fj = rbDragger.GetComponent<FixedJoint>();
-
-        if (!character || !charCon || !inventory || !cam || !CamWiggleObject)
-        {
-            lm.LogError(logSrc,"Missing components!");
-        }
-
-        if (photonView.IsMine)
-        {
-            // Scale the head to 0 so it doesn't clip with the camera
-            this.GetComponent<PlayerAnimController>().SetHead(false);
-            // Turn on character controller
-            charCon.enabled = true;
-        }
+        // Find audio listener
+        audioListener = GetComponentInChildren<AudioListener>();
 
         // Announce self to GM.
         lm.Log(logSrc, "Started. Announcing to GameManager.");
@@ -148,77 +62,121 @@ public class Player : MonoBehaviourPun
 
         // Turn off the cursor
         Cursor.lockState = CursorLockMode.Locked;
+    }
 
-        ccHeight = charCon.height;
-        //camHeight = CamWiggleObject.transform.localPosition.y;
-        camHeadHeightDiff = character.topOfHead.transform.position.y - CamWiggleObject.transform.position.y;
-        camTargetPoint = CamWiggleObject.transform.localPosition;
+    public void TakeCharacterControl(Character c)
+    {
+        // Turn off our own audio listener
+        audioListener.enabled = false;
+
+        // First check the character Photon view is our OR can be owned by us
+        // TODO if (photonView.IsMine)
+
+        character = c;
+        c.controllingPlayer = this;
+        // Turn off the head so it doesn't clip with the camera
+        c.GetComponent<PlayerAnimController>().SetHead(false);
+        // Turn on character controller
+        c.charCon.enabled = true;
+        // Turn on camera
+        c.Camera.enabled = true;
+        // Turn on audio listener
+        c.audioListener.enabled = true;
+    }
+
+    public void ReleaseCharacterControl()
+    {
+        if (!character)
+        {
+            lm.LogError(logSrc, "Cannot release character control, no character.");
+            return;
+        }
+
+        
+
+        // Turn on the head
+        c.GetComponent<PlayerAnimController>().SetHead(true);
+        // Turn off character controller
+        c.charCon.enabled = false;
+        // Turn off camera
+        c.Camera.enabled = false;
+        // Turn off audio listener
+        c.audioListener.enabled = false;
+
+        // Turn on our audio listener
+        audioListener.enabled = true;
+
+        c.controllingPlayer = null;
+        character = null;
     }
 
     // Update is called once per frame
     void Update()
     {
+        if (!character) return;
+
         if (character.IsDead) return; // Don't do anything if we're dead. Introduces a bug when dying in midair, but whatever
 
         #region Camera
         // Control camera movement
-        yaw = transform.localEulerAngles.y + Input.GetAxis("Mouse X") * mouseSensitivity;
+        float yaw = c.transform.localEulerAngles.y + Input.GetAxis("Mouse X") * c.mouseSensitivity;
         // Support dumb inverted camera
-        if (!invertCamera)
-        {
-            pitch -= mouseSensitivity * Input.GetAxis("Mouse Y");
-        }
-        else
-        {
+        //float pitch = c.Camera.transform.localEulerAngles.x;
+        //if (!invertCamera)
+        //{
+        pitch -= c.mouseSensitivity * Input.GetAxis("Mouse Y");
+        //}
+        //else
+        //{
             // Inverted Y
-            pitch += mouseSensitivity * Input.GetAxis("Mouse Y");
-        }
+        //    pitch += mouseSensitivity * Input.GetAxis("Mouse Y");
+        //}
         // Clamp pitch between lookAngle
-        pitch = Mathf.Clamp(pitch, -maxLookAngle, maxLookAngle);
-        // Set y rotation of player object
-        transform.localEulerAngles = new Vector3(0, yaw, 0);
+        pitch = Mathf.Clamp(pitch, -c.maxLookAngle, c.maxLookAngle);
+        // Set y rotation of character object
+        c.transform.localEulerAngles = new Vector3(0, yaw, 0);
         // Set x rotation of camera object
-        cam.transform.localEulerAngles = new Vector3(pitch, 0, 0);
+        c.Camera.transform.localEulerAngles = new Vector3(pitch, 0, 0);
 
         // Reduce camera wiggle
         // BIG NOTE: This is about camera wiggle, NOT gun recoil. Gun recoil uses this as a base, but has its own firing inaccuracy.
         // The reduction amount should be fraction of the x rotation, or CamWiggleReductionPerSecond, whichever is higher.
-        float extraReduction = CamWiggleObject.transform.localEulerAngles.x;
+        float extraReduction = c.CamWiggleObject.transform.localEulerAngles.x;
         if (extraReduction > 180) extraReduction = 360 - extraReduction; // Normalise reduction that goes under 0.
-        float reduction = CamWiggleReductionPerSecond + extraReduction * extraReduction; // Increase with a square, in case we get hit with something massive?
+        float reduction = c.CamWiggleReductionPerSecond + extraReduction * extraReduction; // Increase with a square, in case we get hit with something massive?
         // Rotate back toward 0
-        Quaternion rotAmount = Quaternion.RotateTowards(CamWiggleObject.transform.localRotation, Quaternion.identity, reduction * Time.deltaTime);
+        Quaternion rotAmount = Quaternion.RotateTowards(c.CamWiggleObject.transform.localRotation, Quaternion.identity, reduction * Time.deltaTime);
         // Reduce wiggle value
-        _camWiggle = Mathf.Clamp(_camWiggle - reduction * Time.deltaTime, 0f, 100f);
-        CamWiggleObject.transform.localRotation = rotAmount;
-        CamWiggleObject.transform.localPosition = Vector3.SmoothDamp(CamWiggleObject.transform.localPosition, camTargetPoint, ref camLerpVelocity, camLerpSmoothTime);
+        c._camWiggle = Mathf.Clamp(c._camWiggle - reduction * Time.deltaTime, 0f, 100f);
+        c.CamWiggleObject.transform.localRotation = rotAmount;
+        c.CamWiggleObject.transform.localPosition = Vector3.SmoothDamp(c.CamWiggleObject.transform.localPosition, c.camTargetPoint, ref c.camLerpVelocity, c.camLerpSmoothTime);
         #endregion
 
         #region Crouching
         if (!character.IsCrouching && Input.GetKey(KeyCode.LeftControl))
         {
             character.IsCrouching = true;
-            charCon.height = ccHeight * character.crouchHeightMultiplier;
-            charCon.center = new Vector3(0f, charCon.height / 2, 0f);
-            camTargetPoint = new Vector3(camTargetPoint.x, character.topOfHead.transform.localPosition.y - camHeadHeightDiff, camTargetPoint.z);
+            c.charCon.height = c.ccHeight * character.crouchHeightMultiplier;
+            c.charCon.center = new Vector3(0f, c.charCon.height / 2, 0f);
+            c.camTargetPoint = new Vector3(c.camTargetPoint.x, character.topOfHead.transform.localPosition.y - c.camHeadHeightDiff, c.camTargetPoint.z);
             // If in the air, raise our transform position by the same amount we move the camera down
-            if (!charCon.isGrounded)
+            if (!c.charCon.isGrounded)
             {
-                charCon.Move(new Vector3(0f, ccHeight - charCon.height, 0f));
+                c.charCon.Move(new Vector3(0f, c.ccHeight - c.charCon.height, 0f));
                 // Immediately set camera to new position
-                CamWiggleObject.transform.localPosition = camTargetPoint;
+                c.CamWiggleObject.transform.localPosition = c.camTargetPoint;
             }
         }
-        if (character.IsCrouching && !Input.GetKey(KeyCode.LeftControl) && charCon.isGrounded) // Do not allow uncrouching in the air
+        if (character.IsCrouching && !Input.GetKey(KeyCode.LeftControl) && c.charCon.isGrounded) // Do not allow uncrouching in the air
         {
             // check to see if we can uncrouch, by casting a ray up and seeing if it's clear
-            bool canUncrouch = !Physics.Raycast(character.topOfHead.transform.position, Vector3.up, out RaycastHit crouchHit, ccHeight/2, layermask);
+            bool canUncrouch = !Physics.Raycast(character.topOfHead.transform.position, Vector3.up, out RaycastHit crouchHit, c.ccHeight/2, layermask);
             if (canUncrouch)
             {
                 character.IsCrouching = false;
-                charCon.center = new Vector3(0f, ccHeight / 2, 0f);
-                charCon.height = ccHeight;
-                camTargetPoint = new Vector3(camTargetPoint.x, character.topOfHead.transform.localPosition.y - camHeadHeightDiff, camTargetPoint.z);
+                c.charCon.center = new Vector3(0f, c.ccHeight / 2, 0f);
+                c.charCon.height = c.ccHeight;
+                c.camTargetPoint = new Vector3(c.camTargetPoint.x, character.topOfHead.transform.localPosition.y - c.camHeadHeightDiff, c.camTargetPoint.z);
             }
         }
         #endregion
@@ -228,7 +186,7 @@ public class Player : MonoBehaviourPun
         cursorTooltip.text = "";
 
         // Set grounded flag for the animation controller
-        character.IsGrounded = charCon.isGrounded;
+        character.IsGrounded = c.charCon.isGrounded;
 
         // Get input values 
         character.frontBackMovement = Input.GetAxis("Vertical"); // NOTE These values are lerped!
@@ -239,15 +197,15 @@ public class Player : MonoBehaviourPun
         character.isMoving = Input.GetKey("w") || Input.GetKey("a") || Input.GetKey("s") || Input.GetKey("d");
 
         // Get forward/strafe direction
-        Vector3 strafe = character.leftRightMovement * transform.right;
-        Vector3 forward = character.frontBackMovement * transform.forward;
+        Vector3 strafe = character.leftRightMovement * c.transform.right;
+        Vector3 forward = character.frontBackMovement * c.transform.forward;
         Vector3 moveDirection = forward + strafe;
         // Stop us going faster diagonally. If we're moving on multiple axis, scale back down
         if (moveDirection.magnitude > 1f) moveDirection = moveDirection.normalized;
         // Adjust direction by speed
-        moveDirection *= speed;
+        moveDirection *= c.speed;
 
-        if (charCon.isGrounded)
+        if (c.charCon.isGrounded)
         {
             lastInput = moveDirection;
         } else
@@ -257,7 +215,7 @@ public class Player : MonoBehaviourPun
             // Amend the lastInput to give _some_ air control
             moveDirection += 2f * (forward + strafe);
             // Ensure movement speed doesn't hit max
-            moveDirection = Vector3.ClampMagnitude(moveDirection, speed);
+            moveDirection = Vector3.ClampMagnitude(moveDirection, c.speed);
 
             // TODO also we should code our own accelleration and not use horizontal/vertical input, that allows more 
             // control and to fix the max-speed-when-hitting-ground issue.
@@ -280,28 +238,28 @@ public class Player : MonoBehaviourPun
             moveDirection = new Vector3();
         }
 
-        if (charCon.isGrounded)
+        if (c.charCon.isGrounded)
         {
-            fallingSpeed = -0.3f; // When on the ground we set a little downward speed otherwise the controller seems 
+            c.fallingSpeed = -0.3f; // When on the ground we set a little downward speed otherwise the controller seems 
             // to 'bounce' on the ground and half the time doesn't consider itself grounded.
             // Go up if we're hitting jump.
             if (!character.IsDead && Input.GetKey("space"))
             {
                 character.photonView.RPC("Jump", RpcTarget.All);
-                fallingSpeed = jumpStrength;
+                c.fallingSpeed = c.jumpStrength;
             }
         }
         else
         {
             // Increase gravity if we're in the air
-            fallingSpeed += gravity * Time.deltaTime;
+            c.fallingSpeed += c.gravity * Time.deltaTime;
         }
 
         // Apply falling speed to move direction
-        moveDirection.y = fallingSpeed;
+        moveDirection.y = c.fallingSpeed;
 
         // Instruct the controller to move us
-        charCon.Move(moveDirection * Time.deltaTime);
+        c.charCon.Move(moveDirection * Time.deltaTime);
 
         #endregion
 
@@ -339,20 +297,20 @@ public class Player : MonoBehaviourPun
 
 
         // Raycast forward from our camera to see if we're looking at anything important within range.
-        if (!cam) cam = GetComponentInChildren<Camera>();
-        Vector3 rayOrigin = cam.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, 0.0f));
-        bool hitSomething = Physics.Raycast(rayOrigin, cam.transform.forward, out RaycastHit hit, 500f, layermask);
+        //if (!cam) cam = GetComponentInChildren<Camera>();
+        Vector3 rayOrigin = c.Camera.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, 0.0f));
+        bool hitSomething = Physics.Raycast(rayOrigin, c.Camera.transform.forward, out RaycastHit hit, 500f, layermask);
         if (hitSomething)
         {
             // Set our last hit to this point
-            lastHit = hit;
+            c.lastHit = hit;
             character.aim = hit.point;
 
             // We can't pickup or activate anything beyond our range.
-            if (Vector3.Distance(rayOrigin, hit.point) < activateRange)
+            if (Vector3.Distance(rayOrigin, hit.point) < c.activateRange)
             {
                 // Find a pickup
-                Pickup pickup = lastHit.transform.GetComponent<Pickup>();
+                Pickup pickup = c.lastHit.transform.GetComponent<Pickup>();
                 if (pickup && pickup.enabled == true)
                 {
                     // Set our ui tooltip
@@ -363,14 +321,14 @@ public class Player : MonoBehaviourPun
                 }
 
                 // Find an activatable
-                Activatable act = lastHit.transform.GetComponent<Activatable>();
+                Activatable act = c.lastHit.transform.GetComponent<Activatable>();
                 if (act)
                 {
                     // Set our ui tooltip
                     cursorTooltip.text = "[E] Activate " + act.nickname;
 
                     // Try to activate objects
-                    if (Input.GetKeyDown(KeyCode.E)) TryToActivate(lastHit.transform.gameObject, lastHit.point);
+                    if (Input.GetKeyDown(KeyCode.E)) TryToActivate(c.lastHit.transform.gameObject, c.lastHit.point);
                 }
 
             }
@@ -385,29 +343,29 @@ public class Player : MonoBehaviourPun
         // Rigidbody dragging
         if (Input.GetKeyDown(KeyCode.Z))
         {
-            if (fj.connectedBody)
+            if (c.fj.connectedBody)
             {
                 // Try to transfer ownership back to scene
-                PhotonView pv = fj.connectedBody.GetComponent<PhotonView>();
+                PhotonView pv = c.fj.connectedBody.GetComponent<PhotonView>();
                 if (pv && pv.OwnershipTransfer == OwnershipOption.Takeover)
                 {
                     pv.TransferOwnership(0);
                 }
 
-                fj.connectedBody.AddForce(new Vector3(0f, 0.0001f));
-                fj.connectedBody = null;
+                c.fj.connectedBody.AddForce(new Vector3(0f, 0.0001f));
+                c.fj.connectedBody = null;
 
             } else if (hitSomething)
             {
                 // Try to drag
-                Rigidbody rb = lastHit.transform.GetComponent<Rigidbody>();
-                PhotonView pv = lastHit.transform.GetComponent<PhotonView>();
+                Rigidbody rb = c.lastHit.transform.GetComponent<Rigidbody>();
+                PhotonView pv = c.lastHit.transform.GetComponent<PhotonView>();
                 if (rb && pv && pv.OwnershipTransfer == OwnershipOption.Takeover) { 
                     // Take ownership of this object so we can send physics updates
                     pv.TransferOwnership(this.photonView.Owner);
                     // Set our dragger at the hit position
-                    rbDragger.transform.position = lastHit.transform.position;
-                    fj.connectedBody = rb;
+                    c.rbDragger.transform.position = c.lastHit.transform.position;
+                    c.fj.connectedBody = rb;
                 }
             }
         }
@@ -421,6 +379,11 @@ public class Player : MonoBehaviourPun
             character.heldItemScript.SetValues(rayOrigin, Input.GetButton("Fire1"));
         }
         #endregion
+    }
+
+    public void PlaySound(AudioClip clip)
+    {
+        if (audioSource) audioSource.PlayOneShot(clip);
     }
 
     void TryPickupItem(GameObject item)
@@ -447,21 +410,23 @@ public class Player : MonoBehaviourPun
         // Play sound if the pickup has one
         if (pickup.pickupSound)
         {
-            audioSource.clip = pickup.pickupSound;
-            audioSource.Play();
+            c.audioSource.clip = pickup.pickupSound;
+            c.audioSource.Play();
         }
 
         // Check to see if we're picking up a non-held item like a key
         if (!pickup.prefabHeld)
         {
             gm.Alert("Picked up " + pickup.nickname);
-            inventory.AddItem(pickup);
+            c.inventory.AddItem(pickup);
             Destroy(item); // Note, this only destroys the item for us
             return;
         }
 
         // Create new item in our hands
-        GameObject newItem = PhotonNetwork.Instantiate(pickup.prefabHeld.name, character.itemAnchor.transform.position, Quaternion.identity);
+        object[] instanceData = new object[1];
+        instanceData[0] = character.ID;
+        GameObject newItem = PhotonNetwork.Instantiate(pickup.prefabHeld.name, character.itemAnchor.transform.position, Quaternion.identity, 0, instanceData);
 
         // Server should destroy the original
         GameManager.gm.photonView.RPC("DestroyItem", RpcTarget.MasterClient, PV.ViewID);
@@ -505,7 +470,7 @@ public class Player : MonoBehaviourPun
             return true;
         }
         // Play place-failure sound
-        if (audioSource && cannotPlaceClip) audioSource.PlayOneShot(cannotPlaceClip);
+        if (c.audioSource && cannotPlaceClip) c.audioSource.PlayOneShot(cannotPlaceClip);
         return false;
     }
 
@@ -524,7 +489,7 @@ public class Player : MonoBehaviourPun
     // Places the provided prefab on whatever we're looking at. Things calling this should use CanPlaceItem beforehand
     public void PlaceItem (string prefabName)
     {
-        PhotonNetwork.Instantiate(prefabName, lastHit.point, Quaternion.FromToRotation(Vector3.up, lastHit.normal));
+        PhotonNetwork.Instantiate(prefabName, c.lastHit.point, Quaternion.FromToRotation(Vector3.up, c.lastHit.normal));
     }
 
     [PunRPC]
@@ -552,7 +517,7 @@ public class Player : MonoBehaviourPun
         Activatable act = go.GetComponent<Activatable>();
         if (!act) return;
         // Check we have the right key if it's required
-        if (act.requiredKey != "" && !inventory.HasItem(act.requiredKey))
+        if (act.requiredKey != "" && !c.inventory.HasItem(act.requiredKey))
         {
             // ui alert
             gm.Alert("Need " + act.requiredKey);
