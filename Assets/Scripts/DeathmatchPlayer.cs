@@ -19,7 +19,9 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
     public int kills;
 
     // Special weapon trackers
+    [SerializeField]
     private bool hasGrenade;
+    [SerializeField]
     private bool hasC4;
 
     public int grenadePoints;
@@ -142,13 +144,13 @@ public class DeathmatchPlayer : MonoBehaviour, IOnEventCallback
         if (HasGrenade && Input.GetKeyDown("f"))
         {
             // Throw grenade
-            if (player && player.TryDropItem("Grenade")) HasGrenade = false;
+            if (player && player.character && player.character.TryDropItem("Grenade")) HasGrenade = false;
         }
 
         if (HasC4 && Input.GetKeyDown("c"))
         {
             // Place c4
-            if (player && player.TryPlaceItem("C4", 2f)) HasC4 = false;
+            if (player && player.character && player.character.TryPlaceItem("C4", 2f)) HasC4 = false;
         }
     }
 

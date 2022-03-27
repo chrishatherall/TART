@@ -103,7 +103,8 @@ public class UI_commandWindow : MonoBehaviourPun
                 // Check the item we want to spawn is legit
                 if (spawnableItems.Contains(split[1]))
                 {
-                    player.photonView.RPC("RpcDropItem", RpcTarget.MasterClient, split[1]);
+                    if (!player.character) return;
+                    player.character.photonView.RPC("RpcDropItem", RpcTarget.MasterClient, split[1]);
                 } else
                 {
                     lm.Log(logSrc, $"Invalid SPAWN value: {split[1]}.");
@@ -111,12 +112,14 @@ public class UI_commandWindow : MonoBehaviourPun
                 break;
 
             case "BOT":
+                if (!player.character) return;
                 PhotonNetwork.InstantiateSceneObject("character", player.character.lastHit.point, Quaternion.identity);
                 break;
 
             case "KILL":
                 // Currently you can only kill your own player
-                player.photonView.RPC("InstaKill", RpcTarget.All, 999);
+                if (!player.character) return;
+                player.character.photonView.RPC("InstaKill", RpcTarget.All, 999);
                 break;
 
             case "ROUNDRESTART":

@@ -131,6 +131,9 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
     // Flag for bots
     public bool isBot;
 
+    // Layer mask which ignores layer 7 (local player)
+    int layermask = ~(1 << 7);
+
     // Ref to potential player controlling us. Null for bots
     public Player controllingPlayer;
 
@@ -265,6 +268,8 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
         // Set rb dragger stuff
         fj = rbDragger.GetComponent<FixedJoint>();
 
+        // TODO need a way to set isBot from instantiation data, as right now this makes all bots in the localplayer layer and we can't shoot them
+
         // Set as ready, and apply nickname when the local player has loaded
         if (photonView.IsMine) {
             if (isBot)
@@ -284,7 +289,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
         gm.AddCharacter(this);
 
         // Parent self to gm's spawned-players object for cleanliness
-        this.transform.parent = gm.playerSpawnParent;
+        this.transform.parent = gm.characterSpawnParent;
     }
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
@@ -399,9 +404,14 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
 
     // This is to allow the server to kill a character easily
     [PunRPC]
-    public void InstaKill(int dmg)
+    void InstaKill(int dmg)
     {
         DamageBone("B-head", dmg, Vector3.up, -1, "Command"); // Source of the damage is character -1, essentially nobody
+    }
+
+    public void KillSelf()
+    {
+        photonView.RPC("InstaKill", RpcTarget.All, 999);
     }
 
     // TODO only heals 1 at a time. Ideally should distribute the healing to all BPs that need it, ratiod
@@ -658,8 +668,15 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
                 {
                     if (D.Amount > murderer.Amount) murderer = D;
                 }
-                murdererName = gm.GetCharacterById(murderer.SourceCharacterId).nickname;
                 murdererID = murderer.SourceCharacterId;
+                Character cMurderer = gm.GetCharacterById(murderer.SourceCharacterId);
+                if (cMurderer)
+                {
+                    murdererName = cMurderer.nickname;
+                } else
+                {
+                    lm.LogError(logSrc, $"Could not find murderer character with id of {murdererID}");
+                }
                 causeOfDeath = "Oil Loss";
             }
         }
@@ -677,8 +694,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
 
         // TODO this might be better hooking into an event to increase modularity
         // Try to drop our held item
-        Player fpsc = GetComponent<Player>();
-        if (fpsc) fpsc.TryDropHeldItem();
+        TryDropHeldItem();
 
         // Dont do any UI stuff for bots
         if (!isBot)
@@ -701,4 +717,154 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
             t.gameObject.layer = layer;
         }
     }
+
+
+    public void TryPickupItem(GameObject item)
+    {
+        // If the player is already holding an item, drop it before picking up the new one
+        if (heldItem)
+        {
+            // TODO needs to be run on server?? Or we could run it here and set ownership to the scene
+            TryDropHeldItem();
+        }
+
+        // Find the PhotonView of the item to be picked up
+        PhotonView PV = item.GetComponent<PhotonView>();
+        // Find pickup script
+        Pickup pickup = item.GetComponent<Pickup>();
+
+        if (!item || !PV || !pickup)
+        {
+            lm.LogError(logSrc, $"character {ID} tried to pick up missing item");
+            return;
+        }
+        lm.Log(logSrc, $"character {ID} is picking up {pickup.nickname}");
+
+        // Play sound if the pickup has one
+        if (pickup.pickupSound)
+        {
+            audioSource.clip = pickup.pickupSound;
+            audioSource.Play();
+        }
+
+        // Check to see if we're picking up a non-held item like a key
+        if (!pickup.prefabHeld)
+        {
+            gm.Alert("Picked up " + pickup.nickname);
+            inventory.AddItem(pickup);
+            Destroy(item); // Note, this only destroys the item for us
+            return;
+        }
+
+        // Create new item in our hands
+        object[] instanceData = new object[1];
+        instanceData[0] = ID;
+        GameObject newItem = PhotonNetwork.Instantiate(pickup.prefabHeld.name, itemAnchor.transform.position, Quaternion.identity, 0, instanceData);
+
+        // Server should destroy the original
+        GameManager.gm.photonView.RPC("DestroyItem", RpcTarget.MasterClient, PV.ViewID);
+
+        // TODO items with an audio source should be set to 2d spatial blend so the sound doesn't favour one speaker (annoying)
+
+        // TODO define this layer somewhere. Does this even work properly?
+        newItem.layer = 7;
+
+    }
+
+    // Drops our held item into the world. Called when we press G or on death
+    public void TryDropHeldItem()
+    {
+        if (!heldItem || !heldItemScript) return;
+        TryDropItem(heldItemScript.worldPrefab.name);
+        // Destroy the item in our hands.
+        PhotonNetwork.Destroy(heldItem);
+    }
+
+    // Drops an item into the world
+    public bool TryDropItem(string prefabName)
+    {
+        // TODO check for reasons we couldnt drop an item
+        // Tell server we're dropping an item.
+        photonView.RPC("RpcDropItem", RpcTarget.MasterClient, prefabName);
+        // Do throw visuals on all clients
+        photonView.RPC("DoThrowVisuals", RpcTarget.All);
+        return true;
+    }
+
+    // Returns true if item was placed
+    public bool TryPlaceItem(string prefabName, float distance)
+    {
+        if (CanPlaceItem(prefabName, distance))
+        {
+            // NOTE: we don't play a placement sound, this should be on the placed item
+            PlaceItem(prefabName);
+            return true;
+        }
+        // Play place-failure sound
+        if (audioSource && gm.cannotPlaceClip) audioSource.PlayOneShot(gm.cannotPlaceClip);
+        return false;
+    }
+
+    // Checks to see if we can place an item at our current looking point, considering a maximum distance.
+    // Used when trying to place C4, trips, and cameras.
+    public bool CanPlaceItem(string prefabName, float distance)
+    {
+        Vector3 rayOrigin = cam.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, 0.0f));
+        bool hitSomething = Physics.Raycast(rayOrigin, cam.transform.forward, out RaycastHit hit, distance, layermask);
+        // Only allow placing on static objects, which is hard to determine but for now anything with a lightmap index
+        if (!hitSomething) return false;
+        MeshRenderer mr = hit.collider.GetComponent<MeshRenderer>();
+        return mr && mr.lightmapIndex > -1; // Items with no lightmap have index -1
+    }
+
+    // Places the provided prefab on whatever we're looking at. Things calling this should use CanPlaceItem beforehand
+    void PlaceItem(string prefabName)
+    {
+        PhotonNetwork.Instantiate(prefabName, lastHit.point, Quaternion.FromToRotation(Vector3.up, lastHit.normal));
+    }
+
+    [PunRPC]
+    void RpcDropItem(string prefabName)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        lm.Log(logSrc, $"Player {ID} dropping item {prefabName}");
+        // Create item being dropped
+        GameObject go = PhotonNetwork.InstantiateRoomObject(prefabName, cam.transform.position, transform.rotation);
+        if (!go) return; // Account for errors when instantiating objects
+        // Add some force so it moves away from the player who dropped it
+        Rigidbody rb = go.GetComponent<Rigidbody>();
+        if (rb) rb.AddForce(cam.transform.forward * 1000);
+    }
+
+    /// <summary>
+    /// Attempts to activate an object by sending an activation request to the server.
+    /// </summary>
+    /// <param name="go">Object to be activated</param>
+    /// <param name="position">Position at which the activation occurred, usually a raycast hit</param>
+    public void TryToActivate(GameObject go, Vector3 position)
+    {
+        if (IsDead) return;
+        // Find an activatable
+        Activatable act = go.GetComponent<Activatable>();
+        if (!act) return;
+        // Check we have the right key if it's required
+        if (act.requiredKey != "" && !inventory.HasItem(act.requiredKey))
+        {
+            // ui alert
+            gm.Alert("Need " + act.requiredKey);
+            lm.Log(logSrc, "Need " + act.requiredKey);
+            return;
+        }
+        act.Activate(position);
+        //PhotonView PV = go.GetComponent<PhotonView>();
+        //if (PV) // If the activatable has a photonview, send out a message saying we're activating it
+        //{
+        //    PV.RPC("Activate", RpcTarget.All, position); // Send to all to other clients can make button noises and such
+        //}
+        //else // If no photonview, it's a local-only activatable
+        //{
+        //    act.Activate(position);
+        //}
+    }
+
 }

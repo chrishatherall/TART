@@ -56,6 +56,9 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     [SerializeField]
     AudioClip roundOver;
 
+    [SerializeField]
+    public AudioClip cannotPlaceClip;
+
     // Current and previous state of the game.
     private GameState _curGameState = GameState.PreRound;
     private GameState previousGameState = GameState.PreRound;
@@ -68,6 +71,9 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
 
     // Connected players. Player scripts add themselves on startup.
     public List<Player> players;
+
+    // Reference to the local player
+    public Player localPlayer;
 
     // Minimum numbers of players required to start a round.
     public int minPlayers = 2;
@@ -208,7 +214,17 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
 
     public void Start()
     {
-        SpawnMe();
+        // TEMP. Makes a player prefab for us. Doesn't check for rounds in progress
+        if (playerPrefab == null)
+        {
+            lm.LogError(logSrc, "Missing playerPrefab Reference.");
+            return;
+        }
+
+        Vector3 spawnPosition = new Vector3(0f, 1000f, 0f);
+        // Spawn a Player for the local player
+        GameObject player = PhotonNetwork.Instantiate(this.playerPrefab.name, spawnPosition, Quaternion.identity, 0);
+        localPlayer = player.GetComponent<Player>();
 
         // Tell all scene spawn points to spawn their items
         SpawnSceneItems();
@@ -491,37 +507,6 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
         players.Add(player);
     }
 
-
-    // Spawns a player prefab for the player calling this
-    public void SpawnMe()
-    {
-        // TEMP. Makes a player prefab for us. Doesn't check for rounds in progress
-        if (playerPrefab == null)
-        {
-            lm.LogError(logSrc, "Missing playerPrefab Reference.");
-            return;
-        }
-
-        // If this player has an active script, just respawn that prefab
-/*        Player existingPlayer = GetPlayerById(PhotonNetwork.LocalPlayer.ActorNumber);
-        if (existingPlayer)
-        {
-            // Reset components on player and give it a new spawn location.
-            existingPlayer.photonView.RPC("Reset", RpcTarget.All, false);
-        }
-        else
-        {*/
-        Transform charSpawn = GetCharacterSpawnLocation();
-        Vector3 spawnPosition = new Vector3(0f, 1000f, 0f);
-        // Spawn a Player for the local player
-        GameObject player = PhotonNetwork.Instantiate(this.playerPrefab.name, spawnPosition, Quaternion.identity, 0);
-        // Spawn a Character for the local player
-        GameObject character = PhotonNetwork.Instantiate(this.characterPrefab.name, charSpawn.position, charSpawn.rotation, 0);
-        // Set controlling character
-        player.GetComponent<Player>().TakeCharacterControl(character.GetComponent<Character>());
-        //}
-    }
-
     // This is kinda a temp thing to make sure our player goes back to the main menu when disconnected
     public override void OnLeftRoom()
     {
@@ -553,6 +538,12 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     {
         PhotonView pv = PhotonView.Find(photonViewID);
         PhotonNetwork.Destroy(pv);
+    }
+
+    // Helper function for the Deathscreen UI to respawn our character. Remove in the future when we have a good ui
+    public void RespawnMyCharacter()
+    {
+        if (localPlayer) localPlayer.Respawn();
     }
 
     public void ResetCharacters()

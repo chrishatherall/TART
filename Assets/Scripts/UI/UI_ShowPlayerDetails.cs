@@ -6,7 +6,8 @@ using static GameManager;
 public class UI_ShowPlayerDetails : MonoBehaviour
 {
     // The player we're showing values for.
-    public Character targetPlayer;
+    [SerializeField]
+    Character targetCharacter;
     // The health value box
     public UnityEngine.UI.Text healthValue;
     // Current health image, which scales X with health value
@@ -52,31 +53,25 @@ public class UI_ShowPlayerDetails : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // Try to find a local player if we don't have one.
-        if (!targetPlayer)
-        {
-            targetPlayer = gm.characters.Find(delegate (Character p)
-            {
-                return p && p.photonView && p.photonView.IsMine;
-            });
-            // If we still didn't find one, try next time.
-            if (!targetPlayer) return;
-        }
+        // Keep our target character updated.
+        if (gm.localPlayer) targetCharacter = gm.localPlayer.character;
+
+        if (!targetCharacter) return;
 
         // Set health value
-        if (healthValue) healthValue.text = targetPlayer.oil.ToString();
+        if (healthValue) healthValue.text = targetCharacter.oil.ToString();
         // Set health image to scale with health value
         if (curHealthImage && maxHealthImage)
         {
-            Vector2 newSize = new Vector2(maxHealthImage.rectTransform.rect.width * ((float)targetPlayer.oil / (float)targetPlayer.maxOil), maxHealthImage.rectTransform.rect.height);
+            Vector2 newSize = new Vector2(maxHealthImage.rectTransform.rect.width * ((float)targetCharacter.oil / (float)targetCharacter.maxOil), maxHealthImage.rectTransform.rect.height);
             curHealthImage.rectTransform.sizeDelta = newSize;
         }
 
         // Set healing elements
-        healingObj.active = targetPlayer.isHealing;
-        if (targetPlayer.isHealing)
+        healingObj.active = targetCharacter.isHealing;
+        if (targetCharacter.isHealing)
         {
-            Vector2 newSize = new Vector2(maxHealTimeImage.rectTransform.rect.width * ((float)targetPlayer.sSinceLastHeal / (float)targetPlayer.sHealInterval), maxHealTimeImage.rectTransform.rect.height);
+            Vector2 newSize = new Vector2(maxHealTimeImage.rectTransform.rect.width * ((float)targetCharacter.sSinceLastHeal / (float)targetCharacter.sHealInterval), maxHealTimeImage.rectTransform.rect.height);
             curHealTimeImage.rectTransform.sizeDelta = newSize;
         }
 
@@ -102,19 +97,19 @@ public class UI_ShowPlayerDetails : MonoBehaviour
         }
 
         // Set damage value. The UI shows oil change per second, so if damage>0 then oil change is negative.
-        if (damageValue) damageValue.text = (targetPlayer.GetDamage() > 0 ? "-" : "") + targetPlayer.GetDamage() + "/s";
+        if (damageValue) damageValue.text = (targetCharacter.GetDamage() > 0 ? "-" : "") + targetCharacter.GetDamage() + "/s";
 
         // Set role name
-        if (roleText) roleText.text = targetPlayer.Role.Name;
-        if (roleImage) roleImage.color = targetPlayer.Role.ClassColour;
+        if (roleText) roleText.text = targetCharacter.Role.Name;
+        if (roleImage) roleImage.color = targetCharacter.Role.ClassColour;
 
         // Set gun details
-        if (targetPlayer.heldItem && targetPlayer.heldItemScript && targetPlayer.heldItemScript.gun)
+        if (targetCharacter.heldItem && targetCharacter.heldItemScript && targetCharacter.heldItemScript.gun)
         {
-            Gun gun = targetPlayer.heldItemScript.gun;
+            Gun gun = targetCharacter.heldItemScript.gun;
             if (!gunParent.activeSelf) gunParent.SetActive(true);
             // Set gun name
-            gunText.text = targetPlayer.heldItemScript.nickname;
+            gunText.text = targetCharacter.heldItemScript.nickname;
             // Set bullets number
             gunBulletsLeft.text = gun.bulletsInMag.ToString();
             // Set bullet image to scale with bullets value
