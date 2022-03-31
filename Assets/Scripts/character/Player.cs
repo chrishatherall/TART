@@ -64,11 +64,21 @@ public class Player : MonoBehaviourPun
         // Parent self to gm's spawned-players object for cleanliness
         this.transform.parent = gm.playerSpawnParent;
 
+        if (photonView.IsMine)
+        {
+            // Turn on Camera and Audio Listener
+            cam.enabled = true;
+            audioListener.enabled = true;
+        }
+
         Respawn();
     }
 
     public void Respawn()
     {
+        // Local only!
+        if (!photonView.IsMine) return;
+
         // Kill old character
         if (c)
         {
@@ -95,22 +105,27 @@ public class Player : MonoBehaviourPun
             return;
         }
 
-        // Turn off our own audio listener
-        audioListener.enabled = false;
+        lm.Log(logSrc, $"Player {ID} taking control of character {newCharacter.ID}");
 
         // First check the character Photon view is our OR can be owned by us
         // TODO if (photonView.IsMine)
 
         character = newCharacter;
         c.controllingPlayer = this;
-        // Turn off the head so it doesn't clip with the camera
-        c.GetComponent<PlayerAnimController>().SetHead(false);
-        // Turn on character controller
-        c.charCon.enabled = true;
-        // Turn on camera
-        c.Camera.enabled = true;
-        // Turn on audio listener
-        c.audioListener.enabled = true;
+
+        if (photonView.IsMine)
+        {
+            // Turn off the head so it doesn't clip with the camera
+            c.GetComponent<PlayerAnimController>().SetHead(false);
+            // Turn off our own audio listener
+            audioListener.enabled = false;
+            // Turn on character controller
+            c.charCon.enabled = true;
+            // Turn on camera
+            c.Camera.enabled = true;
+            // Turn on audio listener
+            c.audioListener.enabled = true;
+        }
     }
 
     public void ReleaseCharacterControl()
@@ -121,19 +136,21 @@ public class Player : MonoBehaviourPun
             return;
         }
 
-        
+        lm.Log(logSrc, $"Player {ID} releasing control of character {c.ID}");
 
-        // Turn on the head
-        c.GetComponent<PlayerAnimController>().SetHead(true);
-        // Turn off character controller
-        c.charCon.enabled = false;
-        // Turn off camera
-        c.Camera.enabled = false;
-        // Turn off audio listener
-        c.audioListener.enabled = false;
-
-        // Turn on our audio listener
-        audioListener.enabled = true;
+        if (photonView.IsMine)
+        {
+            // Turn on the head
+            c.GetComponent<PlayerAnimController>().SetHead(true);
+            // Turn off character controller
+            c.charCon.enabled = false;
+            // Turn off camera
+            c.Camera.enabled = false;
+            // Turn off audio listener
+            c.audioListener.enabled = false;
+            // Turn on our audio listener
+            audioListener.enabled = true;
+        }
 
         c.controllingPlayer = null;
         character = null;

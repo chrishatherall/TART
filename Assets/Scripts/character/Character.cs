@@ -10,7 +10,7 @@ using static LogManager;
 // Delegate signature for empty events // TODO no idea if I actually need this
 public delegate void EmptyEvent();
 
-public class Character : MonoBehaviourPunCallbacks, IPunInstantiateMagicCallback
+public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstantiateMagicCallback
 {
     readonly string logSrc = "Character";
 
