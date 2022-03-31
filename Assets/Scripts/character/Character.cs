@@ -10,7 +10,7 @@ using static LogManager;
 // Delegate signature for empty events // TODO no idea if I actually need this
 public delegate void EmptyEvent();
 
-public class Character : MonoBehaviourPunCallbacks, IPunObservable
+public class Character : MonoBehaviourPunCallbacks, IPunInstantiateMagicCallback
 {
     readonly string logSrc = "Character";
 
@@ -233,8 +233,11 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
     int instantDeathCharacter = -1;
     string instantDeathWeapon = "Unknown";
 
-    void Awake()
+    public void OnPhotonInstantiate(PhotonMessageInfo info)
     {
+        // See if this character should be a bot
+        isBot = (string)info.photonView.InstantiationData[0] == "isBot";
+
         // Set our Id using the unique photonView id
         ID = photonView.ViewID;
 
@@ -267,8 +270,6 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
 
         // Set rb dragger stuff
         fj = rbDragger.GetComponent<FixedJoint>();
-
-        // TODO need a way to set isBot from instantiation data, as right now this makes all bots in the localplayer layer and we can't shoot them
 
         // Set as ready, and apply nickname when the local player has loaded
         if (photonView.IsMine) {
@@ -827,9 +828,11 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable
     void RpcDropItem(string prefabName)
     {
         if (!PhotonNetwork.IsMasterClient) return;
-        lm.Log(logSrc, $"Player {ID} dropping item {prefabName}");
+        lm.Log(logSrc, $"Character {ID} dropping item {prefabName}");
         // Create item being dropped
-        GameObject go = PhotonNetwork.InstantiateRoomObject(prefabName, cam.transform.position, transform.rotation);
+        object[] instanceData = new object[1];
+        instanceData[0] = ID;
+        GameObject go = PhotonNetwork.InstantiateRoomObject(prefabName, cam.transform.position, transform.rotation, 0, instanceData);
         if (!go) return; // Account for errors when instantiating objects
         // Add some force so it moves away from the player who dropped it
         Rigidbody rb = go.GetComponent<Rigidbody>();

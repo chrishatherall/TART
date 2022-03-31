@@ -14,7 +14,10 @@ public class Spawnable : MonoBehaviour, IPunInstantiateMagicCallback
         // Ignore collision between the new item and the player who threw it. Allows us to spawn the item inside our player collider, which
         // ensures we can't throw items through walls.
         Collider itemCol = GetComponent<Collider>();
-        Character p = gm.GetCharacterById(info.photonView.OwnerActorNr);
+
+        bool hasInstantiationData = info.photonView.InstantiationData != null;
+        int characterId = hasInstantiationData ? (int)info.photonView.InstantiationData[0] : 0;
+        Character p = gm.GetCharacterById(characterId);
         if (itemCol && p)
         {
             foreach (BodyPart bp in p.bodyParts)

@@ -80,7 +80,9 @@ public class Player : MonoBehaviourPun
 
         // Spawn a Character for the local player
         Transform charSpawn = gm.GetCharacterSpawnLocation();
-        GameObject character = PhotonNetwork.Instantiate(gm.characterPrefab.name, charSpawn.position, charSpawn.rotation, 0);
+        object[] instanceData = new object[1];
+        instanceData[0] = "notBot";
+        GameObject character = PhotonNetwork.Instantiate(gm.characterPrefab.name, charSpawn.position, charSpawn.rotation, 0, instanceData);
         // Set controlling character
         TakeCharacterControl(character.GetComponent<Character>());
     }

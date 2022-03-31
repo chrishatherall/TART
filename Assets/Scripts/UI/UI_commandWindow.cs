@@ -113,7 +113,9 @@ public class UI_commandWindow : MonoBehaviourPun
 
             case "BOT":
                 if (!player.character) return;
-                PhotonNetwork.InstantiateSceneObject("character", player.character.lastHit.point, Quaternion.identity);
+                object[] instanceData = new object[1];
+                instanceData[0] = "isBot"; // TODO maybe some pre-defined structure of character options? Would need serialiser
+                PhotonNetwork.InstantiateSceneObject("character", player.character.lastHit.point, Quaternion.identity, 0 , instanceData);
                 break;
 
             case "KILL":

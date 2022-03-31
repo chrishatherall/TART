@@ -32,11 +32,11 @@ public class TimedExplosive : MonoBehaviourPun, IPunInstantiateMagicCallback
     bool hasExploded = false;
 
     // Id of the player who spawned us
-    public int ownerPlayerID;
+    public int ownerCharacterID;
 
     public void OnPhotonInstantiate(PhotonMessageInfo info)
     {
-        ownerPlayerID = info.photonView.OwnerActorNr;
+        ownerCharacterID = (int)info.photonView.InstantiationData[0];
     }
 
     // Update is called once per frame
@@ -89,7 +89,7 @@ public class TimedExplosive : MonoBehaviourPun, IPunInstantiateMagicCallback
                     if (distance > explosionRadius) break;
                     int damage = Mathf.RoundToInt(explosionDamage * (1 - distance / explosionRadius));
                     float force = explosionForce * (1 - distance / explosionRadius);
-                    bp.TakeDamage(damage, Vector3.Normalize(bp.transform.position + new Vector3(0f, 1f, 0f) - this.transform.position) * force, ownerPlayerID, nickname);
+                    bp.TakeDamage(damage, Vector3.Normalize(bp.transform.position + new Vector3(0f, 1f, 0f) - this.transform.position) * force, ownerCharacterID, nickname);
                 }
             }
             lm.Log(logSrc, $"Explosion at {this.transform.position} with {explosionRadius} radius hit {hitColliders.Length} colliders and {hitPlayers.Count} players.");
