@@ -380,12 +380,13 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
     [PunRPC]
     public void DamageBone(string bodyPartName, int dmg, Vector3 hitDirection, int sourceCharacterID, string sourceWeapon)
     {
+        // Every client receives this so we can do visuals
+
         // Can't take more damage if we're dead
         if (IsDead) return;
 
-        // Play damage sound if we own this 
-        // TODO should be if we're _controlling_
-        if (photonView.IsMine) audioSource.PlayOneShot(damageSound);
+        // Play damage sound if our local player is controlling this character
+        if (gm.localPlayer.character == this) audioSource.PlayOneShot(damageSound);
 
         BodyPart bp = GetBodyPartByName(bodyPartName);
         if (bp)
@@ -557,9 +558,9 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
         string[] parts = data.Split('/');
         foreach (string part in parts)
         {
-            string[] split = part.Split(':');
+            string[] split = part.Split(';');
             // Find a BodyPart by name of split[0]
-            // bp-head:1001:4:1002:8
+            // bp-head;1001:4:1002:8;transformdata
             BodyPart bp = GetBodyPartByName(split[0]);
             if (!bp)
             {

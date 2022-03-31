@@ -78,41 +78,39 @@ public class BodyPart : MonoBehaviour, IDamageTaker
     // Should only be called from the local client
     public void AddDamage(int dmg, int sourceCharacterID, string sourceWeapon)
     {
-        // Local only
-        if (!p.photonView.IsMine)
+        // Only adjust damage values on the owner client
+        if (p.photonView.IsMine)
         {
-            lm.LogError(logSrc, $"AddDamage called on {this.name} from non-owner");
-            return;
+            // TODO if we already have a Damage from this player and source, increase it
+            _damages.Add(new Damage(sourceCharacterID, dmg));
+
+            // Recalculate _damage
+            CalculateCurrentDamage();
         }
-        // TODO if we already have a Damage from this player and source, increase it
-
-        _damages.Add(new Damage(sourceCharacterID, dmg));
-
-        // Recalculate _damage
-        CalculateCurrentDamage();
     }
 
     // Should only be called from the local Player
     public void RemoveDamage(int dmg)
     {
-        // Local only
-        if (!p.photonView.IsMine)
+        // Only adjust damage values on the owner client
+        if (p.photonView.IsMine)
         {
-            lm.LogError(logSrc, $"RemoveDamage called on {this.name} from non-owner");
-            return;
+            // TODO
+
+            // Recalculate _damage
+            CalculateCurrentDamage();
         }
-
-        // TODO
-
-        // Recalculate _damage
-        CalculateCurrentDamage();
     }
 
     // Removes all damage, called on fresh spawn
     public void Reset()
     {
-        if (_damages != null) _damages.Clear();
-        CalculateCurrentDamage();
+        // Only adjust damage values on the owner client
+        if (p.photonView.IsMine)
+        {
+            if (_damages != null) _damages.Clear();
+            CalculateCurrentDamage();
+        }
     }
 
     void CalculateCurrentDamage()
@@ -126,12 +124,15 @@ public class BodyPart : MonoBehaviour, IDamageTaker
 
     public string Serialise()
     {
-        // bp-head:1001:4:1002:8
-        string serial = this.name;
+        // bp-head;1001:4:1002:8;pos&rotData
+        string serial = this.name + ";";
+
+        List<string> dmgStrings = new List<string>();
         foreach (Damage D in _damages)
         {
-            serial += $":{D.SourceCharacterId}:{D.Amount}";
+            dmgStrings.Add($"{D.SourceCharacterId}:{D.Amount}");
         }
+        serial += string.Join(":", dmgStrings.ToArray());
 
         if (p.IsDead)
         {
@@ -140,6 +141,7 @@ public class BodyPart : MonoBehaviour, IDamageTaker
             // Add rotation
             serial += $":{transform.rotation.x}:{transform.rotation.y}:{transform.rotation.z}:{transform.rotation.w}";
         }
+        
         return serial;
     }
 
@@ -150,20 +152,31 @@ public class BodyPart : MonoBehaviour, IDamageTaker
 
         _damages.Clear();
 
-        // Split serial into damage string and position string
+        // Split serial into part name, damage string, and position string
         string[] split = serial.Split(';');
 
-        // Damage string
-        string[] damageStr = split[0].Split(':');
-        // bp-head:1001:4:1002:8
-        for (int i = 1; i < damageStr.Length; i+=2)
+        // Check name in serial against our own name
+        if (split[0] != name)
         {
-            _damages.Add(new Damage(damageStr[i], damageStr[i + 1]));
+            lm.LogError(logSrc, $"Bone {name} received serial data with invalid bone name {split[0]}");
+            return;
         }
-        CalculateCurrentDamage();
+
+        // Damage string
+        if (split.Length > 1)
+        {
+            string[] damageStr = split[1].Split(':');
+            if (damageStr.Length == 1) return; // The array will never be 0, but 1 means there's no split character
+            // 1001:4:1002:8
+            for (int i = 0; i < damageStr.Length; i+=2)
+            {
+                _damages.Add(new Damage(damageStr[i], damageStr[i + 1]));
+            }
+            CalculateCurrentDamage();
+        }
 
         // Position string
-        if (split.Length > 1)
+        if (split.Length > 2)
         {
             Rigidbody rb = GetComponent<Rigidbody>();
             bool wasKinematic = rb.isKinematic;
@@ -171,7 +184,7 @@ public class BodyPart : MonoBehaviour, IDamageTaker
             rb.isKinematic = true;
             rb.useGravity = false;
 
-            string[] positionStr = split[1].Split(':');
+            string[] positionStr = split[2].Split(':');
             transform.position = new Vector3(
                 float.Parse(positionStr[0]),
                 float.Parse(positionStr[1]),
