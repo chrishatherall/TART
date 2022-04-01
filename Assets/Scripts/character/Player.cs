@@ -403,15 +403,15 @@ public class Player : MonoBehaviourPun
 
             } else if (hitSomething)
             {
-                // Try to drag
-                Rigidbody rb = c.lastHit.transform.GetComponent<Rigidbody>();
-                PhotonView pv = c.lastHit.transform.GetComponent<PhotonView>();
-                if (rb && pv && pv.OwnershipTransfer == OwnershipOption.Takeover) { 
+                // See if we can find a Draggable script
+                Draggable d = c.lastHit.transform.GetComponent<Draggable>();
+                if (d && d.enabled)
+                {
                     // Take ownership of this object so we can send physics updates
-                    pv.TransferOwnership(this.photonView.Owner);
+                    d.pv.TransferOwnership(this.photonView.Owner);
                     // Set our dragger at the hit position
                     c.rbDragger.transform.position = c.lastHit.transform.position;
-                    c.fj.connectedBody = rb;
+                    c.fj.connectedBody = d.rb;
                 }
             }
         }
