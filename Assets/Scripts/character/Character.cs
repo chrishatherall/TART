@@ -69,9 +69,9 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
 
     #region Magneto-stick style dragger
     // Ref to our rigidBody dragger
-    [SerializeField]
     public GameObject rbDragger;
-    public FixedJoint fj;
+    public SpringJoint sj;
+    public Draggable draggingObject;
     #endregion
 
     #region Character movement
@@ -269,7 +269,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
         standingHeadPos = topOfHead.transform.localPosition;
 
         // Set rb dragger stuff
-        fj = rbDragger.GetComponent<FixedJoint>();
+        sj = rbDragger.GetComponent<SpringJoint>();
 
         // Set as ready, and apply nickname when the local player has loaded
         if (photonView.IsMine) {
@@ -720,6 +720,59 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
         }
     }
 
+    public void StartDraggingItem(Draggable d)
+    {
+        if (!d || !d.enabled) return;
+        // Take ownership of this object so we can send physics updates
+        d.pv.TransferOwnership(this.photonView.Owner);
+        // Tell everyone we're dragging this item
+        photonView.RPC("DragChange", RpcTarget.All, false, d.pv.ViewID, d.name);
+    }
+
+    public void StopDraggingItem()
+    {
+        if (!draggingObject) return;
+        // Try to transfer ownership back to scene.
+        // TODO if we do this instantly things tend to rubberband back a lot. Maybe delay this, or tweak transform sync
+        draggingObject.pv.TransferOwnership(0);
+        // Tell everyone we're not dragging this item
+        photonView.RPC("DragChange", RpcTarget.All, true, draggingObject.pv.ViewID, draggingObject.name);
+    }
+
+    [PunRPC]
+    void DragChange (bool dropping, int photonViewID, string partName)
+    {
+        if (dropping)
+        {
+            // Give the item a little nudge to wake up the physics engine.
+            sj.connectedBody.AddForce(new Vector3(0f, 0.0001f));
+            sj.connectedBody = null;
+            // We are no longer dragging this item
+            draggingObject = null;
+        } else
+        {
+            // Find the PhotonView and Draggable
+            PhotonView pv = PhotonView.Find(photonViewID);
+            if (!pv)
+            {
+                lm.LogError(logSrc, $"Cannot handle DragChange, no PhotonView of ID {photonViewID}");
+                return;
+            }
+            Draggable d = pv.GetComponent<Draggable>();
+            // TODO if doesnt exist, look for component in children that matches partname
+            if (!d)
+            {
+                lm.LogError(logSrc, $"Cannot handle DragChange, no Draggable of name {partName}");
+                return;
+            }
+            // This draggable is now the item we're dragging
+            draggingObject = d;
+            // Set our dragger at the hit position
+            // TODO lastHit won't be updated for clients who aren't controlling this character, but we could use the aim vector
+            rbDragger.transform.position = d.transform.position; //lastHit.transform.position;
+            sj.connectedBody = d.rb;
+        }
+    }
 
     public void TryPickupItem(GameObject item)
     {

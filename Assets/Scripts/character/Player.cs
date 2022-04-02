@@ -389,30 +389,16 @@ public class Player : MonoBehaviourPun
         // Rigidbody dragging
         if (Input.GetKeyDown(KeyCode.Z))
         {
-            if (c.fj.connectedBody)
+            if (c.draggingObject)
             {
-                // Try to transfer ownership back to scene
-                PhotonView pv = c.fj.connectedBody.GetComponent<PhotonView>();
-                if (pv && pv.OwnershipTransfer == OwnershipOption.Takeover)
-                {
-                    pv.TransferOwnership(0);
-                }
-
-                c.fj.connectedBody.AddForce(new Vector3(0f, 0.0001f));
-                c.fj.connectedBody = null;
+                c.StopDraggingItem();
+                
 
             } else if (hitSomething)
             {
                 // See if we can find a Draggable script
                 Draggable d = c.lastHit.transform.GetComponent<Draggable>();
-                if (d && d.enabled)
-                {
-                    // Take ownership of this object so we can send physics updates
-                    d.pv.TransferOwnership(this.photonView.Owner);
-                    // Set our dragger at the hit position
-                    c.rbDragger.transform.position = c.lastHit.transform.position;
-                    c.fj.connectedBody = d.rb;
-                }
+                if (d && d.enabled) c.StartDraggingItem(d);
             }
         }
 
