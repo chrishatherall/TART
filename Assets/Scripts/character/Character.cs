@@ -734,6 +734,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
         if (!draggingObject) return;
         // Try to transfer ownership back to scene.
         // TODO if we do this instantly things tend to rubberband back a lot. Maybe delay this, or tweak transform sync
+        // TODO maybe even look for way to auto-transfer objects when the player leaves?
         draggingObject.pv.TransferOwnership(0);
         // Tell everyone we're not dragging this item
         photonView.RPC("DragChange", RpcTarget.All, true, draggingObject.pv.ViewID, draggingObject.name);
@@ -759,7 +760,8 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
                 return;
             }
             Draggable d = pv.GetComponent<Draggable>();
-            // TODO if doesnt exist, look for component in children that matches partname
+            // If doesnt exist, look for component in children that matches partname
+            if (!d) d = pv.GetComponentsInChildren<Draggable>().First(drag => drag.name == partName);
             if (!d)
             {
                 lm.LogError(logSrc, $"Cannot handle DragChange, no Draggable of name {partName}");
