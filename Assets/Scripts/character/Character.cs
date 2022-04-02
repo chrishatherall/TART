@@ -67,12 +67,9 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
     }
     #endregion
 
-    #region Magneto-stick style dragger
-    // Ref to our rigidBody dragger
-    public GameObject rbDragger;
-    public SpringJoint sj;
-    public Draggable draggingObject;
-    #endregion
+    // Ref to our dragger script
+    Dragger dragger;
+    public bool IsDraggingObject { get => dragger && dragger.draggingObject; }
 
     #region Character movement
     // Character move speed.
@@ -268,8 +265,8 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
         // Set our standing head height to whatever it is when we spawned
         standingHeadPos = topOfHead.transform.localPosition;
 
-        // Set rb dragger stuff
-        sj = rbDragger.GetComponent<SpringJoint>();
+        // Set dragger stuff
+        dragger = GetComponentInChildren<Dragger>();
 
         // Set as ready, and apply nickname when the local player has loaded
         if (photonView.IsMine) {
@@ -722,7 +719,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
 
     public void StartDraggingItem(Draggable d)
     {
-        if (!d || !d.enabled) return;
+        if (!dragger || !d || !d.enabled) return;
         // Take ownership of this object so we can send physics updates
         d.pv.TransferOwnership(this.photonView.Owner);
         // Tell everyone we're dragging this item
@@ -731,25 +728,22 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
 
     public void StopDraggingItem()
     {
-        if (!draggingObject) return;
+        if (!dragger || !dragger.draggingObject) return;
         // Try to transfer ownership back to scene.
         // TODO if we do this instantly things tend to rubberband back a lot. Maybe delay this, or tweak transform sync
         // TODO maybe even look for way to auto-transfer objects when the player leaves?
-        draggingObject.pv.TransferOwnership(0);
+        dragger.draggingObject.pv.TransferOwnership(0);
         // Tell everyone we're not dragging this item
-        photonView.RPC("DragChange", RpcTarget.All, true, draggingObject.pv.ViewID, draggingObject.name);
+        photonView.RPC("DragChange", RpcTarget.All, true, dragger.draggingObject.pv.ViewID, dragger.draggingObject.name);
     }
 
     [PunRPC]
     void DragChange (bool dropping, int photonViewID, string partName)
     {
+        if (!dragger) return;
         if (dropping)
         {
-            // Give the item a little nudge to wake up the physics engine.
-            sj.connectedBody.AddForce(new Vector3(0f, 0.0001f));
-            sj.connectedBody = null;
-            // We are no longer dragging this item
-            draggingObject = null;
+            dragger.Drop();
         } else
         {
             // Find the PhotonView and Draggable
@@ -767,12 +761,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
                 lm.LogError(logSrc, $"Cannot handle DragChange, no Draggable of name {partName}");
                 return;
             }
-            // This draggable is now the item we're dragging
-            draggingObject = d;
-            // Set our dragger at the hit position
-            // TODO lastHit won't be updated for clients who aren't controlling this character, but we could use the aim vector
-            rbDragger.transform.position = d.transform.position; //lastHit.transform.position;
-            sj.connectedBody = d.rb;
+            dragger.PickUp(d);
         }
     }
 

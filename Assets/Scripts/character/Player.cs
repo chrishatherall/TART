@@ -389,11 +389,9 @@ public class Player : MonoBehaviourPun
         // Rigidbody dragging
         if (Input.GetKeyDown(KeyCode.Z))
         {
-            if (c.draggingObject)
+            if (c.IsDraggingObject)
             {
                 c.StopDraggingItem();
-                
-
             } else if (hitSomething)
             {
                 // See if we can find a Draggable script
