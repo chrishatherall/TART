@@ -214,6 +214,8 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
 
     public void Start()
     {
+        PhotonNetwork.SerializationRate = 100;
+
         // TEMP. Makes a player prefab for us. Doesn't check for rounds in progress
         if (playerPrefab == null)
         {
@@ -233,6 +235,9 @@ public class GameManager : MonoBehaviourPunCallbacks, IPunObservable, IOnEventCa
     // Update is called once per frame
     void Update()
     {
+        // Photon docs say do this maybe but it doesnt seem effective
+        // PhotonNetwork.NetworkingClient.Service();
+
         // Remove any characters from the list that don't exist
         characters.RemoveAll(delegate (Character c) { return !c; });
 
