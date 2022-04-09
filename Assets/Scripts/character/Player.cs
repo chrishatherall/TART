@@ -167,16 +167,7 @@ public class Player : MonoBehaviourPun
         // Control camera movement
         float yaw = c.transform.localEulerAngles.y + Input.GetAxis("Mouse X") * c.mouseSensitivity;
         // Support dumb inverted camera
-        //float pitch = c.Camera.transform.localEulerAngles.x;
-        //if (!invertCamera)
-        //{
         pitch -= c.mouseSensitivity * Input.GetAxis("Mouse Y");
-        //}
-        //else
-        //{
-            // Inverted Y
-        //    pitch += mouseSensitivity * Input.GetAxis("Mouse Y");
-        //}
         // Clamp pitch between lookAngle
         pitch = Mathf.Clamp(pitch, -c.maxLookAngle, c.maxLookAngle);
         // Set y rotation of character object
@@ -309,41 +300,9 @@ public class Player : MonoBehaviourPun
 
         #endregion
 
-        #region Key-specific events
-        // Throw objects
-        if (Input.GetKeyDown("g") && c.heldItem)
-        {
-            c.TryDropHeldItem();
-        }
-
-        // Reload
-        if (Input.GetKeyDown("r") && character.heldItem)
-        {
-            c.heldItem.SendMessage("Reload");
-        }
-
-        // Switch mesh renderer on/off
-        //if (Input.GetKeyDown("p"))
-        //{
-        //    SkinnedMeshRenderer smr = GetComponentInChildren<SkinnedMeshRenderer>(includeInactive:true);
-        //    if (smr) smr.enabled = !smr.enabled;
-        //}
-
-        if (Input.GetKeyDown("b"))
-        {
-            FindObjectOfType<UI_commandWindow>().photonView.RPC("HandleCommand",RpcTarget.MasterClient, "BOT");
-        }
-
-        // healing
-        character.isHealing = Input.GetKey("h");
-        #endregion
-
         #region Interaction
 
-
-
         // Raycast forward from our camera to see if we're looking at anything important within range.
-        //if (!cam) cam = GetComponentInChildren<Camera>();
         Vector3 rayOrigin = c.Camera.ViewportToWorldPoint(new Vector3(0.5f, 0.5f, 0.0f));
         bool hitSomething = Physics.Raycast(rayOrigin, c.Camera.transform.forward, out RaycastHit hit, 500f, layermask);
         if (hitSomething)
@@ -372,7 +331,6 @@ public class Player : MonoBehaviourPun
                 {
                     // Set our ui tooltip
                     cursorTooltip.text = "[E] Activate " + act.nickname;
-
                     // Try to activate objects
                     if (Input.GetKeyDown(KeyCode.E)) c.TryToActivate(c.lastHit.transform.gameObject, c.lastHit.point);
                 }
@@ -386,20 +344,44 @@ public class Player : MonoBehaviourPun
             cursorTooltip.text = "";
         }
 
+        #endregion
+
+        #region Key-specific events
+        // Throw objects
+        if (Input.GetKeyDown("g") && c.heldItem)
+        {
+            c.TryDropHeldItem();
+        }
+
+        // Reload
+        if (Input.GetKeyDown("r") && character.heldItem)
+        {
+            c.heldItem.SendMessage("Reload");
+        }
+
+        // Easy-spawn bot for testing
+        if (Input.GetKeyDown("b"))
+        {
+            FindObjectOfType<UI_commandWindow>().photonView.RPC("HandleCommand", RpcTarget.MasterClient, "BOT");
+        }
+
+        // healing
+        character.isHealing = Input.GetKey("h");
+
         // Rigidbody dragging
         if (Input.GetKeyDown(KeyCode.Z))
         {
             if (c.IsDraggingObject)
             {
                 c.StopDraggingItem();
-            } else if (hitSomething)
+            }
+            else if (hitSomething)
             {
                 // See if we can find a Draggable script
                 Draggable d = c.lastHit.transform.GetComponent<Draggable>();
                 if (d && d.enabled) c.StartDraggingItem(d);
             }
         }
-
         #endregion
 
         #region Misc

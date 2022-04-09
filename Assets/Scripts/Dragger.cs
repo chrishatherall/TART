@@ -27,7 +27,7 @@ public class Dragger : MonoBehaviour
         joint.breakForce = breakForce;
     }
 
-    public void PickUp(Draggable d)
+    public void Drag(Draggable d)
     {
         // Make sure the dragger has a joint
         EnsureJoint();

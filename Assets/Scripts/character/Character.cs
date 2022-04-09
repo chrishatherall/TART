@@ -26,11 +26,8 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
     [SerializeField]
     Camera cam;
     // Public variables
-    public float fov = 60f;
-    public bool invertCamera = false;
-    //public bool cameraCanMove = true;
-    public float mouseSensitivity = 2f;
-    public float maxLookAngle = 50f;
+    public float mouseSensitivity = 1f;
+    public float maxLookAngle = 80f;
     // Camera wiggle. Every time this is set, the rotation of the CameraWiggler object is randomised (to this scale).
     // Eg, a C4 knock will set this very high once. Guns will set this low quite often.
     // This is reduced over time by a set amount.
@@ -73,7 +70,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
 
     #region Character movement
     // Character move speed.
-    public float speed = 6.0f;
+    public float speed = 4.0f;
     // Strength of gravity
     [SerializeField]
     public float gravity = -10f;
@@ -82,7 +79,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
     public float fallingSpeed = 0f;
     // Strength of a jump.
     [SerializeField]
-    public float jumpStrength = 6f;
+    public float jumpStrength = 4f;
     public GameObject topOfHead;
     public Vector3 standingHeadPos;
     // Movement values for animation controller
@@ -761,7 +758,7 @@ public class Character : MonoBehaviourPunCallbacks, IPunObservable, IPunInstanti
                 lm.LogError(logSrc, $"Cannot handle DragChange, no Draggable of name {partName}");
                 return;
             }
-            dragger.PickUp(d);
+            dragger.Drag(d);
         }
     }
 

@@ -218,6 +218,7 @@ public class Gun : MonoBehaviourPun
         }
     }
 
+    // No references because we get a SendMessage
     void Reload()
     {
         photonView.RPC("StartReload", RpcTarget.All);
